@@ -118,30 +118,34 @@ export default function EmployeeReport() {
   const limit = showFullHistory ? 10 : 5;
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white p-4 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
-        <div className="font-extrabold text-slate-800 text-base mb-2.5">🗓️ {curMonth.split('-')[1]}월 실적 요약</div>
+    <div className="space-y-6">
+      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-blue-500"></div>
+        <div className="font-extrabold text-slate-800 text-xl mb-6 tracking-tight flex items-center gap-2">
+          <span className="text-2xl">🗓️</span> {curMonth.split('-')[1]}월 실적 요약
+        </div>
         
-        <div className="bg-sky-50 p-3 rounded-xl border border-sky-200 text-center mb-4">
-          <div className="text-xl font-extrabold text-blue-500">(월 누적매출 : {mRevenue.toLocaleString()}원)</div>
+        <div className="bg-indigo-50/80 p-5 rounded-2xl border border-indigo-100 text-center mb-6 shadow-inner">
+          <div className="text-sm font-bold text-indigo-400 mb-1">월 누적 예상 매출</div>
+          <div className="text-3xl font-black text-indigo-600 tracking-tight">{mRevenue.toLocaleString()}<span className="text-lg ml-1">원</span></div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 mb-4">
-          <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-slate-800 leading-tight">{tRec}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 접수</span></div>
-          <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-emerald-500 leading-tight">{tCom}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 종결</span></div>
-          <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-red-500 leading-tight">{tPen}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 미결</span></div>
-          <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-amber-500 leading-tight">{tInv}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 조사</span></div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="bg-white p-4 rounded-2xl text-center border border-slate-100 shadow-sm"><span className="block font-black text-2xl text-slate-800 leading-tight">{tRec}</span><span className="block text-xs text-slate-400 mt-1 font-bold">총 접수</span></div>
+          <div className="bg-white p-4 rounded-2xl text-center border border-slate-100 shadow-sm"><span className="block font-black text-2xl text-emerald-500 leading-tight">{tCom}</span><span className="block text-xs text-slate-400 mt-1 font-bold">총 종결</span></div>
+          <div className="bg-white p-4 rounded-2xl text-center border border-slate-100 shadow-sm"><span className="block font-black text-2xl text-rose-500 leading-tight">{tPen}</span><span className="block text-xs text-slate-400 mt-1 font-bold">총 미결</span></div>
+          <div className="bg-white p-4 rounded-2xl text-center border border-slate-100 shadow-sm"><span className="block font-black text-2xl text-amber-500 leading-tight">{tInv}</span><span className="block text-xs text-slate-400 mt-1 font-bold">총 조사</span></div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <table className="w-full border-collapse text-xs">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">항목명</th>
-                <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">접수</th>
-                <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">종결</th>
-                <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">미결</th>
-                <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">조사</th>
+                <th className="bg-slate-50/80 p-3 border-b border-slate-200/60 text-center text-slate-500 font-bold">항목명</th>
+                <th className="bg-slate-50/80 p-3 border-b border-slate-200/60 text-center text-slate-500 font-bold">접수</th>
+                <th className="bg-slate-50/80 p-3 border-b border-slate-200/60 text-center text-slate-500 font-bold">종결</th>
+                <th className="bg-slate-50/80 p-3 border-b border-slate-200/60 text-center text-slate-500 font-bold">미결</th>
+                <th className="bg-slate-50/80 p-3 border-b border-slate-200/60 text-center text-slate-500 font-bold">조사</th>
               </tr>
             </thead>
             <tbody>
@@ -151,12 +155,12 @@ export default function EmployeeReport() {
                   gRec += (r.data[g]["접수"] || 0); gCom += (r.data[g]["종결"] || 0); gPen += (r.data[g]["미결"] || 0); gInv += (r.data[g]["조사미결"] || 0);
                 });
                 return (
-                  <tr key={g}>
-                    <td className="text-left font-bold text-blue-500 pl-2.5 p-2 border-b border-slate-100 w-[35%]">{g}</td>
-                    <td className="text-center p-2 border-b border-slate-100">{gRec}</td>
-                    <td className="text-center p-2 border-b border-slate-100 font-bold">{gCom}</td>
-                    <td className="text-center p-2 border-b border-slate-100">{gPen}</td>
-                    <td className="text-center p-2 border-b border-slate-100">{gInv}</td>
+                  <tr key={g} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="text-left font-bold text-indigo-600 pl-4 p-3 border-b border-slate-100 w-[35%]">{g}</td>
+                    <td className="text-center p-3 border-b border-slate-100 font-medium text-slate-600">{gRec}</td>
+                    <td className="text-center p-3 border-b border-slate-100 font-bold text-emerald-600">{gCom}</td>
+                    <td className="text-center p-3 border-b border-slate-100 font-medium text-slate-600">{gPen}</td>
+                    <td className="text-center p-3 border-b border-slate-100 font-medium text-slate-600">{gInv}</td>
                   </tr>
                 );
               })}
@@ -165,33 +169,36 @@ export default function EmployeeReport() {
         </div>
       </div>
 
-      <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
-        <h2 className="text-lg m-0 mb-4 font-bold">📝 마감보고 작성</h2>
-        <div className="mb-4">
+      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
+        <h2 className="text-xl m-0 mb-6 font-extrabold tracking-tight flex items-center gap-2 text-slate-800">
+          <span className="text-2xl">📝</span> 마감보고 작성
+        </h2>
+        <div className="mb-6">
           <label className="block text-sm font-bold text-slate-600 mb-2">보고 날짜</label>
           <input
             type="date"
             value={reportDate}
             onChange={(e) => setReportDate(e.target.value)}
-            className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none"
+            className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm bg-white/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium"
           />
         </div>
 
-        <div>
+        <div className="space-y-6">
           {groups.map(gName => (
-            <div key={gName}>
-              <span className="block mt-4 text-blue-500 font-extrabold border-b-2 border-slate-200 pb-1.5">
-                {gName} ({feeMap[gName]?.toLocaleString()}원)
-              </span>
-              <div className="grid grid-cols-2 gap-2 mt-2">
+            <div key={gName} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+              <div className="flex justify-between items-center border-b border-slate-200/60 pb-3 mb-4">
+                <span className="text-indigo-600 font-extrabold text-base tracking-tight">{gName}</span>
+                <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">단가: {feeMap[gName]?.toLocaleString()}원</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
                 {["접수", "종결", "미결", "조사미결"].map(ind => (
-                  <div key={ind} className="bg-slate-100 p-2.5 rounded-xl border border-slate-200">
-                    <label className="block text-center text-[0.65rem] text-slate-500 mb-1.5">{ind}</label>
+                  <div key={ind} className="bg-white p-3 rounded-xl border border-slate-200/60 shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all">
+                    <label className="block text-center text-[0.7rem] text-slate-500 mb-2 font-bold">{ind}</label>
                     <input
                       type="number"
                       value={formData[gName]?.[ind] || ''}
                       onChange={(e) => handleInputChange(gName, ind, e.target.value)}
-                      className="w-full text-center font-bold border-none bg-transparent outline-none"
+                      className="w-full text-center font-black text-lg border-none bg-transparent outline-none text-slate-800 placeholder:text-slate-300"
                       placeholder="0"
                     />
                   </div>
@@ -201,30 +208,32 @@ export default function EmployeeReport() {
           ))}
         </div>
 
-        <div className="mt-4 mb-4">
+        <div className="mt-6 mb-8">
           <label className="block text-sm font-bold text-slate-600 mb-2">특이사항</label>
           <textarea
-            rows={2}
-            placeholder="메모 입력"
+            rows={3}
+            placeholder="메모를 입력하세요"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none"
+            className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm bg-white/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium resize-none"
           />
         </div>
 
-        <button onClick={handleSubmit} className="w-full bg-blue-500 text-white p-3 rounded-xl font-bold transition-transform active:scale-95">
+        <button onClick={handleSubmit} className="w-full bg-slate-900 hover:bg-slate-800 text-white p-4 rounded-2xl font-bold transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] text-[1rem]">
           {editingId ? "보고 수정하기" : "보고 제출하기"}
         </button>
         {editingId && (
-          <button onClick={handleCancelEdit} className="w-full mt-2.5 bg-transparent border-[1.5px] border-slate-300 text-slate-600 p-1.5 rounded-lg text-xs font-bold transition-transform active:scale-95">
+          <button onClick={handleCancelEdit} className="w-full mt-3 bg-slate-100 hover:bg-slate-200 text-slate-600 p-4 rounded-2xl font-bold transition-colors">
             수정 취소
           </button>
         )}
       </div>
 
-      <div className="bg-white p-4 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
-        <h2 className="text-base m-0 mb-4 font-bold">📑 최근 마감보고 내역</h2>
-        <div className="flex flex-col gap-3">
+      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
+        <h2 className="text-xl m-0 mb-6 font-extrabold tracking-tight flex items-center gap-2 text-slate-800">
+          <span className="text-2xl">📑</span> 최근 마감보고 내역
+        </h2>
+        <div className="flex flex-col gap-4">
           {sortedReports.slice(0, limit).map(r => {
             let sum = 0;
             for (let k in r.data) if (feeMap[k]) sum += (r.data[k].종결 || 0) * feeMap[k];
@@ -232,29 +241,30 @@ export default function EmployeeReport() {
             const details = Object.keys(r.data).map(k => {
               const d = r.data[k];
               if (d['접수'] || d['종결'] || d['미결'] || d['조사미결']) {
-                return <div key={k} className="mt-1 pl-1.5">• {k} : 접수 {d['접수'] || 0} / 종결 {d['종결'] || 0} / 미결 {d['미결'] || 0} / 조사 {d['조사미결'] || 0}</div>;
+                return <div key={k} className="mt-1.5 pl-2 text-sm"><span className="font-bold text-slate-700">• {k}</span> : 접수 {d['접수'] || 0} / 종결 <span className="text-emerald-600 font-bold">{d['종결'] || 0}</span> / 미결 {d['미결'] || 0} / 조사 {d['조사미결'] || 0}</div>;
               }
               return null;
             });
 
             return (
-              <div key={r.id} className="bg-white p-3 rounded-xl border border-slate-200 border-l-[4px] border-l-blue-500 shadow-sm text-xs">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-1.5 mb-1.5">
-                  <b className="text-sm">{r.date}</b>
-                  <span className="text-blue-500 font-extrabold">+{sum.toLocaleString()}원</span>
+              <div key={r.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
+                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-400"></div>
+                <div className="flex justify-between items-center border-b border-slate-100/80 pb-3 mb-3 pl-2">
+                  <b className="text-base text-slate-800">{r.date}</b>
+                  <span className="text-indigo-600 font-black text-lg">+{sum.toLocaleString()}원</span>
                 </div>
-                <div className="text-slate-600 leading-relaxed">{details}</div>
-                <div className="flex gap-1.5 mt-2 justify-end">
-                  <button onClick={() => handleEdit(r.id)} className="bg-blue-500 text-white px-3 py-1 text-xs rounded-lg font-bold">수정</button>
-                  <button onClick={() => handleDelete(r.id)} className="bg-red-500 text-white px-3 py-1 text-xs rounded-lg font-bold">삭제</button>
+                <div className="text-slate-500 leading-relaxed pl-2">{details}</div>
+                <div className="flex gap-2 mt-4 justify-end">
+                  <button onClick={() => handleEdit(r.id)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-xs rounded-xl font-bold transition-colors">수정</button>
+                  <button onClick={() => handleDelete(r.id)} className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 text-xs rounded-xl font-bold transition-colors">삭제</button>
                 </div>
               </div>
             );
           })}
-          {sortedReports.length === 0 && <p className="text-center text-slate-400 p-2.5">내역 없음</p>}
+          {sortedReports.length === 0 && <p className="text-center text-slate-400 p-6 font-medium bg-slate-50/50 rounded-2xl">내역이 없습니다.</p>}
         </div>
         {!showFullHistory && sortedReports.length > 5 && (
-          <button onClick={() => setShowFullHistory(true)} className="w-full mt-4 bg-transparent border-[1.5px] border-slate-300 text-slate-600 p-1.5 rounded-lg text-xs font-bold">
+          <button onClick={() => setShowFullHistory(true)} className="w-full mt-6 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 p-4 rounded-2xl font-bold transition-colors shadow-sm">
             내역 더보기 (최대 10일)
           </button>
         )}

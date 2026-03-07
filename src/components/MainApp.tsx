@@ -24,7 +24,7 @@ export default function MainApp() {
   
   const tabs = isAdmin
     ? [
-        { id: 'adminViewSettlement', label: '💰 매출관리' },
+        { id: 'adminViewSettlement', label: '💰 매출관리(관리자용)' },
         { id: 'adminReportWrapper', label: '📝 마감보고(관리자용)' },
         { id: 'adminViewMgmt', label: '👥 직원관리' },
         { id: 'subViewLeave', label: '🌴 휴가관리' },
@@ -82,38 +82,41 @@ export default function MainApp() {
         </div>
       )}
 
-      <div className="bg-slate-800 text-white flex justify-between items-center p-4 rounded-2xl mb-4">
+      <div className="bg-slate-900/95 backdrop-blur-md text-white flex justify-between items-center p-5 rounded-3xl mb-6 shadow-xl shadow-slate-900/10 border border-slate-800">
         <div className="flex-1">
-          <div className="font-extrabold text-lg">{currentUser?.name}님</div>
-          <div className="text-xs text-slate-300 mt-1">
-            {currentUser?.company} / {currentUser?.role} / {currentUser?.rank}
+          <div className="font-extrabold text-xl tracking-tight">{currentUser?.name}님</div>
+          <div className="text-sm text-slate-400 mt-1.5 font-medium flex items-center gap-2">
+            <span className="bg-slate-800 px-2 py-0.5 rounded-md text-slate-300">{currentUser?.company}</span>
+            <span>{currentUser?.role}</span>
+            <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
+            <span>{currentUser?.rank}</span>
           </div>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowProfileModal(true)}
-            className="px-4 py-2 bg-white/10 text-xs text-white rounded-xl font-bold hover:bg-white/20 transition-colors"
+            className="px-4 py-2.5 bg-white/5 text-xs text-white rounded-xl font-semibold hover:bg-white/10 transition-all border border-white/10"
           >
             내정보수정
           </button>
           <button
             onClick={logout}
-            className="px-4 py-2 bg-white/20 text-xs text-white rounded-xl font-bold hover:bg-white/30 transition-colors"
+            className="px-4 py-2.5 bg-rose-500/10 text-xs text-rose-400 rounded-xl font-semibold hover:bg-rose-500/20 transition-all border border-rose-500/20"
           >
             로그아웃
           </button>
         </div>
       </div>
 
-      <nav className="grid grid-cols-3 gap-1.5 mb-4">
+      <nav className="grid grid-cols-3 gap-2 mb-6 p-1.5 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50">
         {tabs.map(t => (
           <div
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className={`p-2.5 text-center rounded-xl text-xs font-bold cursor-pointer border transition-all ${
+            className={`p-3 text-center rounded-xl text-xs sm:text-sm font-bold cursor-pointer transition-all duration-200 ${
               activeTab === t.id
-                ? 'bg-blue-500 text-white border-blue-500 shadow-[0_4px_10px_rgba(52,152,219,0.2)]'
-                : 'bg-white text-slate-500 border-slate-200'
+                ? 'bg-white text-indigo-600 shadow-md shadow-slate-200/50 ring-1 ring-slate-100'
+                : 'text-slate-500 hover:bg-white/50 hover:text-slate-700'
             }`}
           >
             {t.label}

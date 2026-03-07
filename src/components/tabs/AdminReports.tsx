@@ -43,7 +43,7 @@ export default function AdminReports() {
           userStatsHtml.push(
             <div key={u.userId} className="bg-white p-4 rounded-xl border border-slate-200 border-l-[4px] border-l-blue-500 shadow-sm mb-3">
               <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2.5">
-                <b className="text-base">{u.name} <small className="text-slate-500 font-normal">({u.role}/{u.rank})</small></b>
+                <b className="text-base">{u.name} <small className="text-slate-500 font-normal">({u.company}/{u.role}/{u.rank})</small></b>
                 <span className="text-blue-500 font-black text-lg">{p.revenue.toLocaleString()}원</span>
               </div>
               <div className="flex justify-between mb-2.5 font-bold text-slate-800 bg-slate-50 p-2.5 rounded-lg text-center">
@@ -140,7 +140,7 @@ export default function AdminReports() {
       if (!submittedUids.includes(u.userId)) {
         unreported.push(
           <div key={u.userId} className="bg-white p-3 rounded-xl border border-slate-200 border-l-[4px] border-l-red-500 shadow-sm mb-2">
-            <b>{u.name}</b> <span className="text-xs text-slate-500">({u.role}/{u.rank})</span> - <b className="text-red-500 text-sm">미제출</b>
+            <b>{u.name}</b> <span className="text-xs text-slate-500">({u.company}/{u.role}/{u.rank})</span> - <b className="text-red-500 text-sm">미제출</b>
           </div>
         );
       } else {
@@ -158,7 +158,7 @@ export default function AdminReports() {
         reported.push(
           <div key={u.userId} className="bg-white p-3 rounded-xl border border-slate-200 border-l-[4px] border-l-blue-500 shadow-sm mb-2 text-xs">
             <div className="flex justify-between items-center border-b border-slate-100 pb-1.5 mb-1.5">
-              <b className="text-sm">{u.name} <small className="text-slate-500 font-normal">({u.role}/{u.rank})</small></b>
+              <b className="text-sm">{u.name} <small className="text-slate-500 font-normal">({u.company}/{u.role}/{u.rank})</small></b>
               <span className="text-blue-500 font-extrabold">+{dRev.toLocaleString()}원</span>
             </div>
             <div className="text-slate-600 leading-relaxed">{details}</div>
