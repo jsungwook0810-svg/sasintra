@@ -75,9 +75,9 @@ export default function AdminStaff() {
   };
 
   const getRoles = (c: string) => {
-    return c === '삼성'
-      ? ['누수팀', '재물팀', '간편심사', '관리자']
-      : ['관리자'];
+    if (c === '삼성') return ['누수팀', '재물팀', '간편심사', '관리자'];
+    if (c === '마이브라운') return ['재물심사', '관리자'];
+    return ['관리자'];
   };
 
   return (

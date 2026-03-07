@@ -11,8 +11,9 @@ export default function AdminSettlement() {
   const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [actualRevenue, setActualRevenue] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState('삼성');
 
-  const staffList = globalStaffList.filter(u => u.approved && u.rank !== '팀장' && u.role !== '관리자');
+  const staffList = globalStaffList.filter(u => u.approved && u.rank !== '팀장' && u.role !== '관리자' && u.company === selectedCompany);
 
   const handleSaveActualRevenue = async () => {
     if (!selectedStaff) return;
@@ -61,27 +62,33 @@ export default function AdminSettlement() {
           <span className="animate-pulse">⚠️</span> 이달의 미정산 직원
         </h3>
         <div className="flex flex-col gap-3">
-          {staffList.map(u => {
-            const p = calculatePerformance(u.userId, month, globalStaffList, globalAllReports, globalActualRevenues);
-            if (!p) return null;
-            const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === month);
-            if (act) return null;
+          {staffList.length === 0 ? (
+            <p className="text-center text-sm text-slate-500 py-4 bg-white/50 rounded-xl">해당 보험사에 등록된 직원이 없습니다.</p>
+          ) : (
+            <>
+              {staffList.map(u => {
+                const p = calculatePerformance(u.userId, month, globalStaffList, globalAllReports, globalActualRevenues);
+                if (!p) return null;
+                const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === month);
+                if (act) return null;
 
-            return (
-              <div key={u.userId} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
-                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-rose-400"></div>
-                <div className="flex justify-between items-center pl-2">
-                  <b className="text-sm text-slate-800">{u.name} <small className="text-slate-400 font-medium ml-1">({u.company}/{u.role}/{u.rank})</small></b>
-                  <button onClick={() => openModal(u, p.revenue)} className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 text-xs rounded-xl font-bold transition-colors shadow-sm shadow-rose-500/20">정산입력</button>
-                </div>
-                <div className="text-xs text-slate-500 mt-2 pl-2 font-medium">보고(가매출): <span className="text-slate-700 font-bold">{p.revenue.toLocaleString()}</span>원</div>
-              </div>
-            );
-          })}
-          {staffList.filter(u => {
-            const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === month);
-            return !act;
-          }).length === 0 && <p className="text-center text-sm text-emerald-600 font-bold py-4 bg-emerald-50/50 rounded-xl">🎉 전원 정산 완료!</p>}
+                return (
+                  <div key={u.userId} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-rose-400"></div>
+                    <div className="flex justify-between items-center pl-2">
+                      <b className="text-sm text-slate-800">{u.name} <small className="text-slate-400 font-medium ml-1">({u.company}/{u.role}/{u.rank})</small></b>
+                      <button onClick={() => openModal(u, p.revenue)} className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 text-xs rounded-xl font-bold transition-colors shadow-sm shadow-rose-500/20">정산입력</button>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-2 pl-2 font-medium">보고(가매출): <span className="text-slate-700 font-bold">{p.revenue.toLocaleString()}</span>원</div>
+                  </div>
+                );
+              })}
+              {staffList.filter(u => {
+                const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === month);
+                return !act;
+              }).length === 0 && <p className="text-center text-sm text-emerald-600 font-bold py-4 bg-emerald-50/50 rounded-xl">🎉 전원 정산 완료!</p>}
+            </>
+          )}
         </div>
       </div>
 
@@ -276,6 +283,18 @@ export default function AdminSettlement() {
 
   return (
     <div>
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4 flex items-center justify-between">
+        <label className="font-bold text-slate-700 mr-4">🏢 보험사 선택</label>
+        <select 
+          value={selectedCompany} 
+          onChange={(e) => setSelectedCompany(e.target.value)} 
+          className="flex-1 p-2 border border-slate-300 rounded-lg text-sm focus:border-indigo-500 outline-none font-medium"
+        >
+          <option value="삼성">삼성</option>
+          <option value="마이브라운">마이브라운</option>
+        </select>
+      </div>
+
       <nav className="flex bg-slate-100/80 backdrop-blur-sm rounded-2xl p-1.5 mb-6 border border-slate-200/50">
         <div
           onClick={() => setSubTab('input')}

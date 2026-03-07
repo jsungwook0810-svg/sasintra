@@ -16,6 +16,10 @@ export const reportStructure: Record<string, Record<string, string[]>> = {
     "누수팀": ["시설소유관리자", "300만원 초과", "300만원 이하", "급배수사고"],
     "재물팀": ["골프용품", "홀인원", "가전제품", "펫보험"],
     "간편심사": ["홀인원", "가전제품", "펫보험"]
+  },
+  "마이브라운": {
+    "재물심사": ["골프용품", "홀인원", "가전제품", "펫보험"],
+    "재물팀": ["골프용품", "홀인원", "가전제품", "펫보험"]
   }
 };
 
@@ -37,5 +41,11 @@ export const salaryData: Record<string, Record<string, { base: number, target: n
     "주임": { base: 2400000, target: 6000000, threshold: 6000000, type: "fixed35" },
     "대리": { base: 2500000, target: 6250000, threshold: 6250000, type: "fixed35" },
     "과장": { base: 2600000, target: 6500000, threshold: 6500000, type: "fixed35" }
+  },
+  "재물심사": {
+    "사원": { base: 2300000, target: 5750000, threshold: 5750000, type: "mybrown" },
+    "주임": { base: 2400000, target: 6000000, threshold: 6000000, type: "mybrown" },
+    "대리": { base: 2500000, target: 6250000, threshold: 6250000, type: "mybrown" },
+    "과장": { base: 2600000, target: 6500000, threshold: 6500000, type: "mybrown" }
   }
 };

@@ -84,7 +84,12 @@ export function calculatePerformance(uid: string, month: string, globalStaffList
   
   let inc = 0;
   if (finalRev >= conf.target) {
-    let rate = (staff.role === "누수팀") ? (finalRev >= 10000000 ? 0.44 : (finalRev >= 8750000 ? 0.41 : (finalRev >= 7500000 ? 0.38 : 0.35))) : 0.35;
+    let rate = 0.35;
+    if (staff.company === "마이브라운") {
+      rate = finalRev >= 9500000 ? 0.44 : (finalRev >= 8250000 ? 0.41 : (finalRev >= 7000000 ? 0.38 : 0.35));
+    } else if (staff.role === "누수팀") {
+      rate = finalRev >= 10000000 ? 0.44 : (finalRev >= 8750000 ? 0.41 : (finalRev >= 7500000 ? 0.38 : 0.35));
+    }
     inc = Math.floor((finalRev - conf.threshold) * rate);
   }
   

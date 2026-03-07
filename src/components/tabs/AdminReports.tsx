@@ -7,13 +7,14 @@ export default function AdminReports() {
   const [subTab, setSubTab] = useState('stats');
   const [month, setMonth] = useState(getKSTMonth());
   const [liveDate, setLiveDate] = useState(getKSTToday());
+  const [selectedCompany, setSelectedCompany] = useState('삼성');
 
   const renderStats = () => {
     let totalRev = 0, tRec = 0, tCom = 0, tPen = 0, tInv = 0;
     const itemSummary: Record<string, any> = {};
     const userStatsHtml: any[] = [];
 
-    globalStaffList.filter(u => u.approved).forEach(u => {
+    globalStaffList.filter(u => u.approved && u.company === selectedCompany).forEach(u => {
       const p = calculatePerformance(u.userId, month, globalStaffList, globalAllReports, globalActualRevenues);
       if (p) {
         totalRev += p.revenue;
@@ -64,16 +65,11 @@ export default function AdminReports() {
         <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-t-[5px] border-blue-500">
           <div className="mb-4">
             <label className="block text-sm font-bold text-slate-600 mb-2">조회 월 선택</label>
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none"
-            />
+            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none" />
           </div>
           <div className="bg-slate-100 mb-3 p-4 rounded-xl text-center border border-slate-200">
             <span className="block font-extrabold text-2xl text-blue-500 leading-tight">{totalRev.toLocaleString()}원</span>
-            <span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">전사 합산 가매출액</span>
+            <span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">{selectedCompany} 합산 가매출액</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-slate-800">{tRec}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 접수</span></div>
@@ -136,7 +132,7 @@ export default function AdminReports() {
     const unreported: any[] = [];
     const reported: any[] = [];
 
-    globalStaffList.filter(u => u.approved && u.role !== '관리자' && u.rank !== '팀장').forEach(u => {
+    globalStaffList.filter(u => u.approved && u.company === selectedCompany && u.role !== '관리자' && u.rank !== '팀장').forEach(u => {
       if (!submittedUids.includes(u.userId)) {
         unreported.push(
           <div key={u.userId} className="bg-white p-3 rounded-xl border border-slate-200 border-l-[4px] border-l-red-500 shadow-sm mb-2">
@@ -145,6 +141,7 @@ export default function AdminReports() {
         );
       } else {
         const rep = dailyReports.find(r => r.userId === u.userId);
+        if (!rep) return;
         let dRev = 0;
         const details = Object.keys(rep.data).map(k => {
           const d = rep.data[k];
@@ -180,13 +177,13 @@ export default function AdminReports() {
           />
         </div>
         <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-t-[5px] border-red-500">
-          <h2 className="text-base text-red-500 m-0 mb-2.5 font-bold">⚠️ 마감보고 미제출자</h2>
+          <h2 className="text-base text-red-500 m-0 mb-2.5 font-bold">⚠️ {selectedCompany} 마감보고 미제출자</h2>
           <div className="flex flex-col">
             {unreported.length > 0 ? unreported : <p className="text-center text-sm text-slate-500">미제출자가 없습니다.</p>}
           </div>
         </div>
         <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
-          <h2 className="text-lg m-0 mb-3 font-bold">👥 직원별 보고 현황</h2>
+          <h2 className="text-lg m-0 mb-3 font-bold">👥 {selectedCompany} 직원별 보고 현황</h2>
           <div className="flex flex-col">
             {reported.length > 0 ? reported : <p className="text-center text-sm text-slate-500">제출된 보고가 없습니다.</p>}
           </div>
@@ -197,6 +194,18 @@ export default function AdminReports() {
 
   return (
     <div>
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4 flex items-center justify-between">
+        <label className="font-bold text-slate-700 mr-4">🏢 보험사 선택</label>
+        <select 
+          value={selectedCompany} 
+          onChange={(e) => setSelectedCompany(e.target.value)} 
+          className="flex-1 p-2 border border-slate-300 rounded-lg text-sm focus:border-indigo-500 outline-none font-medium"
+        >
+          <option value="삼성">삼성</option>
+          <option value="마이브라운">마이브라운</option>
+        </select>
+      </div>
+
       <nav className="flex bg-slate-100 rounded-xl p-1 mb-4">
         <div
           onClick={() => setSubTab('stats')}
