@@ -95,7 +95,7 @@ export default function CalendarView() {
           {hol && <div className="text-[0.55rem] text-red-500 font-bold mt-0.5">{hol}</div>}
           {allDoneHtml}
           {leaves.map((lv, idx) => (
-            <div key={idx} className="bg-red-500 text-white text-[0.62rem] rounded px-1 mt-0.5 w-[94%] text-center whitespace-nowrap overflow-hidden text-ellipsis font-bold">
+            <div key={idx} className="bg-red-500 text-white text-[0.62rem] sm:text-xs rounded px-1 mt-0.5 w-[94%] text-center whitespace-normal break-words leading-tight font-bold">
               {lv.name}
             </div>
           ))}

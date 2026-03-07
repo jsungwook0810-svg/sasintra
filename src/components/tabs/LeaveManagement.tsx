@@ -33,6 +33,11 @@ export default function LeaveManagement() {
     if (!startDate || !endDate) return alert("날짜를 선택하세요.");
     if (startDate > endDate) return alert("종료일이 시작일보다 빠를 수 없습니다.");
     
+    const today = getKSTToday();
+    if (startDate > today || endDate > today) {
+      return alert("당일 이후의 날짜는 입력할 수 없습니다.");
+    }
+    
     let days = getBusinessDays(startDate, endDate);
     if (leaveType.includes('반차')) days = 0.5;
     if (days === 0) return alert("선택한 기간에 평일이 없습니다.");
@@ -94,11 +99,11 @@ export default function LeaveManagement() {
         <div className="grid grid-cols-2 gap-2.5 mb-3">
           <div>
             <label className="block text-sm font-bold text-slate-600 mb-1">시작일</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none" />
+            <input type="date" value={startDate} max={getKSTToday()} onChange={e => setStartDate(e.target.value)} className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none" />
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-600 mb-1">종료일</label>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none" />
+            <input type="date" value={endDate} max={getKSTToday()} onChange={e => setEndDate(e.target.value)} className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none" />
           </div>
         </div>
         <div className="mb-4">

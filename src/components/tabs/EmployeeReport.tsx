@@ -53,6 +53,11 @@ export default function EmployeeReport() {
   const handleSubmit = async () => {
     if (!reportDate) return alert("날짜를 선택하세요.");
     
+    const today = getKSTToday();
+    if (reportDate > today) {
+      return alert("당일 이후의 날짜는 입력할 수 없습니다.");
+    }
+    
     if (!editingId) {
       const isDuplicate = allUserReports.some(r => r.date === reportDate);
       if (isDuplicate) return alert("이미 마감보고를 하였습니다!");
@@ -73,6 +78,7 @@ export default function EmployeeReport() {
     } else {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'daily_reports'), { ...data, createdAt: Date.now() });
       alert("보고가 제출되었습니다.");
+      handleCancelEdit();
     }
   };
 
@@ -178,6 +184,7 @@ export default function EmployeeReport() {
           <input
             type="date"
             value={reportDate}
+            max={getKSTToday()}
             onChange={(e) => setReportDate(e.target.value)}
             className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm bg-white/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium"
           />
