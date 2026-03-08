@@ -18,8 +18,6 @@ export default function CalendarView() {
   const f = new Date(y, m, 1).getDay();
   const l = new Date(y, m + 1, 0).getDate();
 
-  const targetStaffCount = globalStaffList.filter(u => u.approved && u.role !== '관리자' && u.rank !== '팀장').length;
-
   const changeMonth = (off: number) => {
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() + off);
@@ -78,9 +76,26 @@ export default function CalendarView() {
       const isToday = getKSTToday() === ds;
 
       let allDoneHtml = null;
-      if (currentUser?.role === '관리자') {
-        const submittedSet = new Set(globalAllReports.filter(rep => rep.date === ds).map(rep => rep.userId));
-        if (targetStaffCount > 0 && submittedSet.size >= targetStaffCount) {
+      if (currentUser?.role === '관리자' && !isSunday && !isSaturday && !hol) {
+        // 해당 날짜의 휴가자 목록
+        const leaveUserIds = new Set(leaves.map(lv => lv.userId));
+        
+        // 보고 대상자: 승인된 직원 중 관리자 제외, 해당 날짜 휴가자 제외
+        const targetStaffs = globalStaffList.filter(u => 
+          u.approved && 
+          u.role !== '관리자' && 
+          !leaveUserIds.has(u.userId)
+        );
+        
+        const targetCount = targetStaffs.length;
+        
+        // 해당 날짜에 제출한 직원 수 (대상자 중에서만 카운트)
+        const submittedCount = globalAllReports.filter(rep => 
+          rep.date === ds && 
+          targetStaffs.some(u => u.userId === rep.userId)
+        ).length;
+
+        if (targetCount > 0 && submittedCount >= targetCount) {
           allDoneHtml = <div className="text-[0.55rem] text-emerald-600 font-bold mt-0.5 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">✓전원완료</div>;
         }
       }
@@ -129,9 +144,26 @@ export default function CalendarView() {
     const hol = KOR_HOLIDAYS[ds] || "";
 
     let allDoneHtml = null;
-    if (currentUser?.role === '관리자') {
-      const submittedSet = new Set(globalAllReports.filter(rep => rep.date === ds).map(rep => rep.userId));
-      if (targetStaffCount > 0 && submittedSet.size >= targetStaffCount) {
+    if (currentUser?.role === '관리자' && !KOR_HOLIDAYS[ds] && new Date(ds).getDay() !== 0 && new Date(ds).getDay() !== 6) {
+      // 해당 날짜의 휴가자 목록
+      const leaveUserIds = new Set(dayLeaves.map(lv => lv.userId));
+      
+      // 보고 대상자: 승인된 직원 중 관리자 제외, 해당 날짜 휴가자 제외
+      const targetStaffs = globalStaffList.filter(u => 
+        u.approved && 
+        u.role !== '관리자' && 
+        !leaveUserIds.has(u.userId)
+      );
+      
+      const targetCount = targetStaffs.length;
+      
+      // 해당 날짜에 제출한 직원 수 (대상자 중에서만 카운트)
+      const submittedCount = globalAllReports.filter(rep => 
+        rep.date === ds && 
+        targetStaffs.some(u => u.userId === rep.userId)
+      ).length;
+
+      if (targetCount > 0 && submittedCount >= targetCount) {
         allDoneHtml = <div className="bg-emerald-500 text-white p-2 rounded-lg mb-2.5 font-bold text-center shadow-sm text-sm">🎉 모든 직원이 마감보고를 완료했습니다!</div>;
       }
     }
