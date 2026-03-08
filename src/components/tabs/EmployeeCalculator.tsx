@@ -33,9 +33,12 @@ export default function EmployeeCalculator() {
     let rate = 0, inc = 0;
     
     if (isEligible) {
-      rate = (currentUser.role === "누수팀") 
-        ? (rev >= 10000000 ? 0.44 : (rev >= 8750000 ? 0.41 : (rev >= 7500000 ? 0.38 : 0.35))) 
-        : 0.35;
+      rate = 0.35;
+      if (currentUser.company === "마이브라운") {
+        rate = rev >= 9500000 ? 0.44 : (rev >= 8250000 ? 0.41 : (rev >= 7000000 ? 0.38 : 0.35));
+      } else if (currentUser.role === "누수팀") {
+        rate = rev >= 10000000 ? 0.44 : (rev >= 8750000 ? 0.41 : (rev >= 7500000 ? 0.38 : 0.35));
+      }
       inc = Math.floor((rev - conf.threshold) * rate);
     }
     
@@ -60,7 +63,7 @@ export default function EmployeeCalculator() {
           <input
             type="number"
             value={revenueInput}
-            onChange={(e) => setRevenueInput(Number(e.target.value))}
+            onChange={(e) => setRevenueInput(e.target.value === '' ? '' : Number(e.target.value))}
             className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none"
           />
         </div>

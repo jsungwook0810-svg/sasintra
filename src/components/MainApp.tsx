@@ -10,13 +10,13 @@ import EmployeeCalculator from './tabs/EmployeeCalculator';
 import LeaveManagement from './tabs/LeaveManagement';
 import CalendarView from './tabs/CalendarView';
 import Notices from './tabs/Notices';
-import { getKSTToday } from '@/lib/utils';
+import { getKSTToday, KOR_HOLIDAYS } from '@/lib/utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
 
 export default function MainApp() {
   const { currentUser, logout } = useAuth();
-  const { allUserReports, notices } = useData();
+  const { allUserReports, notices, allLeavesGlobal } = useData();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [newPw, setNewPw] = useState('');
   
@@ -45,6 +45,19 @@ export default function MainApp() {
   const todayStr = getKSTToday();
   const hasReportToday = allUserReports.some(r => r.date === todayStr);
 
+  // 영업일 확인 (주말/공휴일 제외)
+  const isWeekend = new Date(todayStr).getDay() === 0 || new Date(todayStr).getDay() === 6;
+  const isHoliday = !!KOR_HOLIDAYS[todayStr];
+  
+  // 휴가 확인
+  const isOnLeave = allLeavesGlobal.some(lv => 
+    lv.userId === currentUser?.userId && 
+    todayStr >= (lv.startDate || lv.date) && 
+    todayStr <= (lv.endDate || lv.date)
+  );
+
+  const shouldShowReportReminder = !isAdmin && !hasReportToday && !isWeekend && !isHoliday && !isOnLeave;
+
   const unreadNotice = notices.length > 0 && notices[0].createdAt > (currentUser?.lastReadNotice || 0);
 
   const handleUpdatePassword = async () => {
@@ -64,7 +77,7 @@ export default function MainApp() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-30px)]">
-      {!isAdmin && !hasReportToday && (
+      {shouldShowReportReminder && (
         <div 
           onClick={() => setActiveTab('subViewReport')}
           className="mb-4 p-4 rounded-xl text-sm font-bold flex items-center gap-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)] cursor-pointer bg-amber-50 text-amber-800 border border-amber-200"

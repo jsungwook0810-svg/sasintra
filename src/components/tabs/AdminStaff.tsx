@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '@/contexts/DataContext';
-import { doc, setDoc, deleteDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, getDoc, updateDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
 
 export default function AdminStaff() {
@@ -17,6 +17,8 @@ export default function AdminStaff() {
   const [editCompany, setEditCompany] = useState('삼성');
   const [editRole, setEditRole] = useState('누수팀');
   const [editRank, setEditRank] = useState('사원');
+
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const handleCheckId = async () => {
     if (!id || id.length < 4) {
@@ -48,10 +50,48 @@ export default function AdminStaff() {
     setName(''); setJoinDate(''); setId(''); setPw('');
   };
 
-  const handleDelete = async (uid: string) => {
-    if (window.confirm("삭제하시겠습니까?")) {
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', uid));
-      alert("삭제 완료");
+  const requestDelete = (user: any) => {
+    setDeleteTarget(user);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteTarget) return;
+    const uid = deleteTarget.userId;
+
+    try {
+      const batch = writeBatch(db);
+      
+      // 1. Delete User Profile
+      const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', uid);
+      batch.delete(userRef);
+
+      // 2. Delete Leaves
+      const leavesQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'leave_requests'), where('userId', '==', uid));
+      const leavesSnap = await getDocs(leavesQuery);
+      leavesSnap.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      // 3. Delete Daily Reports
+      const reportsQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'daily_reports'), where('userId', '==', uid));
+      const reportsSnap = await getDocs(reportsQuery);
+      reportsSnap.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      // 4. Delete Actual Revenues
+      const revenuesQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'actual_revenues'), where('userId', '==', uid));
+      const revenuesSnap = await getDocs(revenuesQuery);
+      revenuesSnap.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+      alert("✅ 삭제되었습니다.");
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("Error deleting user data:", error);
+      alert("삭제 중 오류가 발생했습니다.");
     }
   };
 
@@ -143,7 +183,7 @@ export default function AdminStaff() {
                 <span><b className="text-sm">{u.name}</b> <small className="text-slate-500">({u.company}/{u.role}/{u.rank})</small></span>
                 <div className="flex gap-1.5">
                   <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold">수정</button>
-                  <button onClick={() => handleDelete(u.userId)} className="bg-red-500 text-white px-3 py-1.5 text-xs rounded-lg font-bold">삭제</button>
+                  <button onClick={() => requestDelete(u)} className="bg-red-500 text-white px-3 py-1.5 text-xs rounded-lg font-bold">삭제</button>
                 </div>
               </div>
             </div>
@@ -151,6 +191,25 @@ export default function AdminStaff() {
           {globalStaffList.filter(u => u.approved).length === 0 && <p className="text-center text-slate-500 text-sm">직원 없음</p>}
         </div>
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-6 rounded-[20px] w-full max-w-[400px] shadow-2xl text-center">
+            <div className="text-4xl mb-4">🚨</div>
+            <h2 className="text-lg font-bold mb-2 text-rose-600">정말로 삭제하시겠습니까?</h2>
+            <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+              <b className="text-slate-800">{deleteTarget.name}</b> 님의 정보를 삭제합니다.<br/>
+              이 작업은 되돌릴 수 없으며,<br/>
+              <span className="text-rose-500 font-bold">휴가, 보고서, 매출기록 등 모든 데이터</span>가<br/>
+              영구적으로 삭제됩니다.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={executeDelete} className="flex-1 bg-rose-500 text-white p-3 rounded-xl font-bold">삭제 실행</button>
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 bg-slate-100 text-slate-600 p-3 rounded-xl font-bold">취소</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editStaff && (
         <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">

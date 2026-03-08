@@ -194,6 +194,29 @@ export default function CalendarView() {
             </div>
           </div>
 
+          {currentUser?.role === '관리자' && dayLeaves.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className="text-xs font-bold text-rose-500 mb-2">🚨 관리자 전용: 휴가 데이터 강제 삭제</div>
+              {dayLeaves.map((lv, idx) => (
+                <div key={idx} className="flex justify-between items-center bg-rose-50 p-2 rounded mb-1">
+                  <span className="text-xs text-slate-700"><b>{lv.name}</b> ({lv.type})</span>
+                  <button 
+                    onClick={async () => {
+                      if(window.confirm(`${lv.name}님의 휴가를 삭제하시겠습니까?`)) {
+                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leave_requests', lv.id));
+                        alert("삭제되었습니다.");
+                        setSelectedDay(null);
+                      }
+                    }}
+                    className="bg-white border border-rose-200 text-rose-500 text-[10px] px-2 py-1 rounded font-bold"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <button onClick={() => setSelectedDay(null)} className="w-full mt-4 bg-transparent border-[1.5px] border-slate-300 text-slate-600 p-2 rounded-lg font-bold text-sm">닫기</button>
         </div>
       </div>
