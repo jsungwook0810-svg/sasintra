@@ -37,18 +37,44 @@ export function getBusinessDays(startStr: string, endStr: string) {
   return count;
 }
 
-export function calculateAnnualLeave(jStr: string) {
+export function calculateAnnualLeave(jStr: string, targetYear?: number) {
   if (!jStr) return 0;
   const jd = new Date(jStr);
-  const ty = getKSTTime().getFullYear();
+  const today = getKSTTime();
+  const ty = targetYear !== undefined ? targetYear : today.getFullYear();
   const jy = jd.getFullYear();
   
-  if (ty === jy) return Math.max(0, getKSTTime().getMonth() - jd.getMonth());
-  if (ty === jy + 1) {
-    const d = Math.floor((new Date(jy, 11, 31).getTime() - jd.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    return parseFloat(((15 * d) / 365).toFixed(1));
+  let totalLeave = 0;
+
+  if (ty < jy) return 0;
+
+  if (ty === jy) {
+    // 입사 당해년도 (회계연도 기준 1년차)
+    // 입사월부터 12월까지 만근 시 발생하는 월차 (최대 11일)
+    let year1Monthly = 11 - jd.getMonth();
+    if (jd.getDate() > 1) year1Monthly -= 1;
+    totalLeave = Math.max(0, year1Monthly);
+  } else if (ty === jy + 1) {
+    // 입사 다음 해 (회계연도 기준 2년차)
+    // 1. 전년도에 발생한 월차를 제외하고, 입사 1년이 될 때까지 남은 월차
+    let year1Monthly = 11 - jd.getMonth();
+    if (jd.getDate() > 1) year1Monthly -= 1;
+    let year2Monthly = 11 - Math.max(0, year1Monthly);
+
+    // 2. 전년도 근무일수 비례 연차
+    const daysInFirstYear = Math.floor((new Date(jy, 11, 31).getTime() - jd.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const proportionalLeave = (15 * daysInFirstYear) / 365;
+    
+    totalLeave = year2Monthly + proportionalLeave;
+  } else {
+    // 회계연도 기준 3년차 이상
+    const yearsOfService = ty - jy;
+    const extraDays = Math.max(0, Math.floor((yearsOfService - 1) / 2));
+    totalLeave = Math.min(15 + extraDays, 25);
   }
-  return Math.min(15 + Math.max(0, Math.floor((ty - jy - 2) / 2)), 25);
+
+  // 반올림 규칙: 13.1 -> 13.5, 13.5 -> 13.5, 13.6 -> 14
+  return Math.ceil(totalLeave * 2) / 2;
 }
 
 export function calculatePerformance(uid: string, month: string, globalStaffList: any[], globalAllReports: any[], globalActualRevenues: any[]) {

@@ -21,12 +21,13 @@ export default function MainApp() {
   const [newPw, setNewPw] = useState('');
   
   const isAdmin = currentUser?.role === '관리자';
+  const isJungSungWook = currentUser?.name === '정성욱';
   
   const tabs = isAdmin
     ? [
         { id: 'adminViewSettlement', label: '💰 매출관리(관리자용)' },
         { id: 'adminReportWrapper', label: '📝 마감보고(관리자용)' },
-        { id: 'adminViewMgmt', label: '👥 직원관리' },
+        ...(isJungSungWook ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : []),
         { id: 'subViewLeave', label: '🌴 휴가관리' },
         { id: 'subViewCal', label: '📅 일정달력' },
         { id: 'subViewNotices', label: '📢 공지사항' }

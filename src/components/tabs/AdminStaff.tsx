@@ -61,30 +61,18 @@ export default function AdminStaff() {
     try {
       const batch = writeBatch(db);
       
-      // 1. Delete User Profile
+      // 1. Soft Delete User Profile (Keep for historical data)
       const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', uid);
-      batch.delete(userRef);
+      batch.update(userRef, { deleted: true, approved: false });
 
-      // 2. Delete Leaves
+      // 2. Delete Leaves (Optional, but usually good to clear future leaves)
       const leavesQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'leave_requests'), where('userId', '==', uid));
       const leavesSnap = await getDocs(leavesQuery);
       leavesSnap.forEach((doc) => {
         batch.delete(doc.ref);
       });
 
-      // 3. Delete Daily Reports
-      const reportsQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'daily_reports'), where('userId', '==', uid));
-      const reportsSnap = await getDocs(reportsQuery);
-      reportsSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      // 4. Delete Actual Revenues
-      const revenuesQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'actual_revenues'), where('userId', '==', uid));
-      const revenuesSnap = await getDocs(revenuesQuery);
-      revenuesSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
+      // We DO NOT delete daily_reports and actual_revenues to keep historical sales data.
 
       await batch.commit();
       alert("✅ 삭제되었습니다.");

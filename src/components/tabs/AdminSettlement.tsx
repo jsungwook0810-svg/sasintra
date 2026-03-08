@@ -13,7 +13,12 @@ export default function AdminSettlement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState('삼성');
 
-  const staffList = globalStaffList.filter(u => u.approved && u.rank !== '팀장' && u.role !== '관리자' && u.company === selectedCompany);
+  const staffList = globalStaffList.filter(u => 
+    u.rank !== '팀장' && 
+    u.role !== '관리자' && 
+    u.company === selectedCompany &&
+    (u.approved || globalAllReports.some(r => r.userId === u.userId && r.date.startsWith(month)) || globalActualRevenues.some(r => r.userId === u.userId && r.month === month))
+  );
 
   const handleSaveActualRevenue = async () => {
     if (!selectedStaff) return;

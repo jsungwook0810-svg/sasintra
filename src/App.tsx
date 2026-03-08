@@ -54,7 +54,7 @@ export default function App() {
           <AppContent />
           
           <footer className="mt-auto pt-8 pb-4 text-center text-slate-400 text-xs font-medium tracking-wide">
-            Designed by Jung sungwook | 2026 v1.0.8 (Final)
+            Designed by Jung sungwook | 2026 v1.0
           </footer>
         </div>
       </div>

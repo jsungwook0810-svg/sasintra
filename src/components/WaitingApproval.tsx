@@ -2,7 +2,9 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function WaitingApproval() {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
+
+  const isDeleted = (currentUser as any)?.deleted;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
@@ -11,16 +13,25 @@ export default function WaitingApproval() {
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange-400/10 rounded-full blur-3xl"></div>
         
         <div className="relative z-10">
-          <div className="text-6xl mb-6 animate-bounce">⏳</div>
-          <h2 className="text-2xl font-extrabold text-slate-800 mb-3 tracking-tight">승인 대기 중</h2>
+          <div className="text-6xl mb-6 animate-bounce">{isDeleted ? '🚫' : '⏳'}</div>
+          <h2 className="text-2xl font-extrabold text-slate-800 mb-3 tracking-tight">
+            {isDeleted ? '삭제된 계정' : '승인 대기 중'}
+          </h2>
           <p className="text-slate-500 font-medium leading-relaxed">
-            <strong className="text-indigo-600">{currentUser?.name}</strong>님,<br/>관리자의 승인을 기다리고 있습니다.
+            <strong className="text-indigo-600">{currentUser?.name}</strong>님,<br/>
+            {isDeleted ? '이 계정은 관리자에 의해 삭제되었습니다.' : '관리자의 승인을 기다리고 있습니다.'}
           </p>
           <button
             onClick={() => window.location.reload()}
             className="mt-8 w-full px-6 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-[1rem] transition-all active:scale-[0.98] shadow-lg shadow-slate-900/20"
           >
             상태 새로고침
+          </button>
+          <button
+            onClick={logout}
+            className="mt-3 w-full px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-[1rem] transition-all active:scale-[0.98]"
+          >
+            로그아웃
           </button>
         </div>
       </div>

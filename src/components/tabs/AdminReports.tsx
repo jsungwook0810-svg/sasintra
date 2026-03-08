@@ -14,7 +14,10 @@ export default function AdminReports() {
     const itemSummary: Record<string, any> = {};
     const userStatsHtml: any[] = [];
 
-    globalStaffList.filter(u => u.approved && u.company === selectedCompany).forEach(u => {
+    globalStaffList.filter(u => 
+      u.company === selectedCompany && 
+      (u.approved || globalAllReports.some(r => r.userId === u.userId && r.date.startsWith(month)))
+    ).forEach(u => {
       const p = calculatePerformance(u.userId, month, globalStaffList, globalAllReports, globalActualRevenues);
       if (p) {
         totalRev += p.revenue;
@@ -132,7 +135,12 @@ export default function AdminReports() {
     const unreported: any[] = [];
     const reported: any[] = [];
 
-    globalStaffList.filter(u => u.approved && u.company === selectedCompany && u.role !== '관리자' && u.rank !== '팀장').forEach(u => {
+    globalStaffList.filter(u => 
+      u.company === selectedCompany && 
+      u.role !== '관리자' && 
+      u.rank !== '팀장' &&
+      (u.approved || globalAllReports.some(r => r.userId === u.userId && r.date === liveDate))
+    ).forEach(u => {
       if (!submittedUids.includes(u.userId)) {
         unreported.push(
           <div key={u.userId} className="bg-white p-3 rounded-xl border border-slate-200 border-l-[4px] border-l-red-500 shadow-sm mb-2">
