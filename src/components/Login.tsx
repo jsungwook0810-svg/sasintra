@@ -20,8 +20,17 @@ export default function Login() {
     setIsLoading(true);
     try {
       const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', id));
-      if (snap.exists() && snap.data().password === pw) {
-        login(snap.data() as User, autoLogin);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.deleted) {
+          setErrorMsg("삭제된 계정입니다.");
+          return;
+        }
+        if (data.password === pw) {
+          login(data as User, autoLogin);
+        } else {
+          setErrorMsg("로그인 정보가 올바르지 않습니다.");
+        }
       } else {
         setErrorMsg("로그인 정보가 올바르지 않습니다.");
       }
