@@ -42,7 +42,7 @@ export default function EmployeeCalculator() {
       inc = Math.floor((rev - conf.threshold) * rate);
     }
     
-    const net = (conf.base + inc) - Math.floor((conf.base + inc) * 0.033);
+    const net = (conf.base + inc);
     
     setResult({
       target: conf.target,
@@ -81,7 +81,7 @@ export default function EmployeeCalculator() {
             <div className="flex justify-between border-t border-dashed border-slate-300 pt-2 mt-2"><span>• 내 기본급:</span> <b className="text-blue-500">{result.base.toLocaleString()}원</b></div>
             <div className="flex justify-between mt-2"><span>• 인센티브 금액:</span> <b className="text-amber-500">+{result.inc.toLocaleString()}원</b></div>
           </div>
-          <div className="text-sm font-bold text-slate-800 mb-1">세후 예상 총 수령액 (3.3% 공제)</div>
+          <div className="text-sm font-bold text-slate-800 mb-1">세전 예상 총 수령액</div>
           <div className="text-3xl font-black text-red-500">{result.net.toLocaleString()}원</div>
         </div>
       )}

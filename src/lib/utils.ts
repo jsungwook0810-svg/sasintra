@@ -97,7 +97,7 @@ export function calculatePerformance(uid: string, month: string, globalStaffList
     name: staff.name,
     revenue: mRev,
     incentive: inc,
-    netPay: (conf.base + inc) - Math.floor((conf.base + inc) * 0.033),
+    netPay: (conf.base + inc),
     company: staff.company,
     role: staff.role,
     rank: staff.rank,
