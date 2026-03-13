@@ -20,6 +20,17 @@ function AppContent() {
     return <Login />;
   }
 
+  if (currentUser.isResigned) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] bg-white rounded-3xl p-8 shadow-sm border border-slate-200 text-center">
+        <div className="text-4xl mb-4">🔒</div>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">접근 제한</h2>
+        <p className="text-slate-500 text-sm">퇴사 처리된 계정입니다. 관리자에게 문의하세요.</p>
+        <button onClick={() => window.location.reload()} className="mt-6 bg-slate-100 text-slate-600 px-4 py-2 rounded-xl font-bold text-sm">처음으로</button>
+      </div>
+    );
+  }
+
   if (!currentUser.approved) {
     return <WaitingApproval />;
   }

@@ -4,6 +4,7 @@ import { useData } from '@/contexts/DataContext';
 import AdminSettlement from './tabs/AdminSettlement';
 import AdminReports from './tabs/AdminReports';
 import AdminStaff from './tabs/AdminStaff';
+import AdminCorpCard from './tabs/AdminCorpCard';
 import EmployeeReport from './tabs/EmployeeReport';
 import EmployeeRevenue from './tabs/EmployeeRevenue';
 import EmployeeCalculator from './tabs/EmployeeCalculator';
@@ -28,6 +29,7 @@ export default function MainApp() {
         { id: 'adminViewSettlement', label: '💰 매출관리(관리자용)' },
         { id: 'adminReportWrapper', label: '📝 마감보고(관리자용)' },
         ...(isJungSungWook ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : []),
+        { id: 'adminCorpCard', label: '💳 법인카드관리' },
         { id: 'subViewLeave', label: '🌴 휴가관리' },
         { id: 'subViewCal', label: '📅 일정달력' },
         { id: 'subViewNotices', label: '📢 공지사항' }
@@ -142,6 +144,7 @@ export default function MainApp() {
         {activeTab === 'adminViewSettlement' && <AdminSettlement />}
         {activeTab === 'adminReportWrapper' && <AdminReports />}
         {activeTab === 'adminViewMgmt' && <AdminStaff />}
+        {activeTab === 'adminCorpCard' && <AdminCorpCard />}
         {activeTab === 'subViewReport' && <EmployeeReport />}
         {activeTab === 'subViewCalculator' && <EmployeeCalculator />}
         {activeTab === 'subViewLeave' && <LeaveManagement />}

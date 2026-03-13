@@ -11,6 +11,7 @@ interface DataContextType {
   globalActualRevenues: any[];
   myMemos: any[];
   notices: any[];
+  corpCardUsages: any[];
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -24,6 +25,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [globalActualRevenues, setGlobalActualRevenues] = useState<any[]>([]);
   const [myMemos, setMyMemos] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
+  const [corpCardUsages, setCorpCardUsages] = useState<any[]>([]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -60,6 +62,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     let unsubStaff: any;
     let unsubAllReports: any;
+    let unsubCorpCard: any;
 
     if (isAdmin) {
       unsubStaff = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snap) => {
@@ -67,6 +70,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       });
       unsubAllReports = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'daily_reports'), (snap) => {
         setGlobalAllReports(snap.docs.map(d => d.data()));
+      });
+      unsubCorpCard = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'corp_card_usages'), (snap) => {
+        setCorpCardUsages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
     }
 
@@ -78,12 +84,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       unsubRevenues();
       if (unsubStaff) unsubStaff();
       if (unsubAllReports) unsubAllReports();
+      if (unsubCorpCard) unsubCorpCard();
     };
   }, [currentUser]);
 
   return (
     <DataContext.Provider value={{
-      allUserReports, allLeavesGlobal, globalStaffList, globalAllReports, globalActualRevenues, myMemos, notices
+      allUserReports, allLeavesGlobal, globalStaffList, globalAllReports, globalActualRevenues, myMemos, notices, corpCardUsages
     }}>
       {children}
     </DataContext.Provider>

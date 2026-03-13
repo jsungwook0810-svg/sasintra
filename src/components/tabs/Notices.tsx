@@ -18,6 +18,8 @@ export default function Notices() {
   const [selectedNotice, setSelectedNotice] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
   const quillRef = useRef<any>(null);
 
   useEffect(() => {
@@ -130,7 +132,7 @@ export default function Notices() {
       </div>
 
       <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
-        {sortedNotices.map(n => (
+        {sortedNotices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(n => (
           <div 
             key={n.id} 
             className={`border-b border-slate-100/80 last:border-0 p-5 sm:p-6 hover:bg-slate-50/80 cursor-pointer transition-colors group relative ${n.isPinned ? 'bg-indigo-50/30' : ''}`} 
@@ -158,6 +160,28 @@ export default function Notices() {
           </div>
         )}
       </div>
+
+      {sortedNotices.length > itemsPerPage && (
+        <div className="flex justify-center gap-2 mt-6">
+          <button 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 disabled:opacity-50 disabled:bg-slate-50 bg-white shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            이전
+          </button>
+          <span className="px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-200 rounded-xl shadow-sm">
+            {currentPage} / {Math.ceil(sortedNotices.length / itemsPerPage)}
+          </span>
+          <button 
+            onClick={() => setCurrentPage(p => Math.min(Math.ceil(sortedNotices.length / itemsPerPage), p + 1))}
+            disabled={currentPage === Math.ceil(sortedNotices.length / itemsPerPage)}
+            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 disabled:opacity-50 disabled:bg-slate-50 bg-white shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            다음
+          </button>
+        </div>
+      )}
 
       {/* Write Modal */}
       {showWrite && (

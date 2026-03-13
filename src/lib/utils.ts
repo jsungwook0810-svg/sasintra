@@ -44,34 +44,54 @@ export function calculateAnnualLeave(jStr: string, targetYear?: number) {
   const ty = targetYear !== undefined ? targetYear : today.getFullYear();
   const jy = jd.getFullYear();
   
-  let totalLeave = 0;
-
   if (ty < jy) return 0;
 
-  if (ty === jy) {
-    // 입사 당해년도 (회계연도 기준 1년차)
-    // 입사월부터 12월까지 만근 시 발생하는 월차 (최대 11일)
-    let year1Monthly = 11 - jd.getMonth();
-    if (jd.getDate() > 1) year1Monthly -= 1;
-    totalLeave = Math.max(0, year1Monthly);
-  } else if (ty === jy + 1) {
-    // 입사 다음 해 (회계연도 기준 2년차)
-    // 1. 전년도에 발생한 월차를 제외하고, 입사 1년이 될 때까지 남은 월차
-    let year1Monthly = 11 - jd.getMonth();
-    if (jd.getDate() > 1) year1Monthly -= 1;
-    let year2Monthly = 11 - Math.max(0, year1Monthly);
+  // Helper to get full months worked between two dates
+  const getMonthsDiff = (start: Date, end: Date) => {
+    if (end < start) return 0;
+    let months = (end.getFullYear() - start.getFullYear()) * 12;
+    months -= start.getMonth();
+    months += end.getMonth();
+    if (end.getDate() < start.getDate()) {
+      months--;
+    }
+    return Math.max(0, months);
+  };
 
-    // 2. 전년도 근무일수 비례 연차
-    const daysInFirstYear = Math.floor((new Date(jy, 11, 31).getTime() - jd.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const proportionalLeave = (15 * daysInFirstYear) / 365;
-    
-    totalLeave = year2Monthly + proportionalLeave;
+  // Determine the "as of" date for the target year
+  let asOfDateForTy = new Date(ty, 11, 31);
+  if (ty === today.getFullYear()) {
+    asOfDateForTy = today;
+  } else if (ty > today.getFullYear()) {
+    asOfDateForTy = new Date(ty, 11, 31);
+  }
+
+  let asOfDateForPrev = new Date(ty - 1, 11, 31);
+
+  // 1. Calculate Monthly Leaves (월차) - max 11 days total for the first year of service
+  const totalMonthlyUpToTy = Math.min(11, getMonthsDiff(jd, asOfDateForTy));
+  const totalMonthlyUpToPrev = Math.min(11, getMonthsDiff(jd, asOfDateForPrev));
+  const monthlyLeavesForTy = Math.max(0, totalMonthlyUpToTy - totalMonthlyUpToPrev);
+
+  let annualLeavesForTy = 0;
+
+  // 2. Calculate Annual Leaves (연차)
+  if (ty === jy) {
+    // 입사 당해년도: 연차는 없고 월차만 발생
+    annualLeavesForTy = 0;
+  } else if (ty === jy + 1) {
+    // 입사 이듬해: 전년도 근무일수에 비례하여 1월 1일에 연차 발생
+    const endOfFirstYear = new Date(jy, 11, 31);
+    const daysInFirstYear = Math.floor((endOfFirstYear.getTime() - jd.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    annualLeavesForTy = (15 * daysInFirstYear) / 365;
   } else {
-    // 회계연도 기준 3년차 이상
+    // 3년차 이상: 기본 15일 + 가산 연차
     const yearsOfService = ty - jy;
     const extraDays = Math.max(0, Math.floor((yearsOfService - 1) / 2));
-    totalLeave = Math.min(15 + extraDays, 25);
+    annualLeavesForTy = Math.min(15 + extraDays, 25);
   }
+
+  const totalLeave = monthlyLeavesForTy + annualLeavesForTy;
 
   // 반올림 규칙: 13.1 -> 13.5, 13.5 -> 13.5, 13.6 -> 14
   return Math.ceil(totalLeave * 2) / 2;
@@ -90,20 +110,21 @@ export function calculatePerformance(uid: string, month: string, globalStaffList
 
   let mRev = 0;
   const reports = globalAllReports.filter(r => r.userId === uid && r.date.startsWith(month));
+  const sortedReports = [...reports].sort((a, b) => a.date.localeCompare(b.date));
   const breakdown: Record<string, any> = {};
   
-  reports.forEach(r => {
+  sortedReports.forEach(r => {
     for (let g in r.data) {
       const d = r.data[g];
-      if (feeMap[g]) mRev += (d.종결 || 0) * feeMap[g];
-      if (!breakdown[g]) breakdown[g] = { rec: 0, com: 0, pen: 0, inv: 0, rev: 0 };
+      if (!breakdown[g]) breakdown[g] = { rec: 0, com: 0, pen: 0, rev: 0 };
       breakdown[g].rec += (d['접수'] || 0);
       breakdown[g].com += (d['종결'] || 0);
-      breakdown[g].pen += (d['미결'] || 0);
-      breakdown[g].inv += (d['조사미결'] || 0);
-      if (feeMap[g]) breakdown[g].rev += (d.종결 || 0) * feeMap[g];
+      if (d['미결'] !== undefined) breakdown[g].pen = d['미결'];
+      if (feeMap[g]) breakdown[g].rev += (d['종결'] || 0) * feeMap[g];
     }
   });
+
+  mRev = Object.values(breakdown).reduce((sum, b) => sum + b.rev, 0);
   
   const actRec = globalActualRevenues.find(ar => ar.userId === uid && ar.month === month);
   const finalRev = actRec ? actRec.amount : mRev;

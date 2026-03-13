@@ -13,6 +13,8 @@ export interface User {
   joinDate?: string;
   password?: string;
   lastReadNotice?: number;
+  isResigned?: boolean;
+  resignDate?: string;
 }
 
 interface AuthContextType {

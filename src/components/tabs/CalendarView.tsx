@@ -174,8 +174,8 @@ export default function CalendarView() {
       for (let k in report.data) if (feeMap[k]) dRev += (report.data[k].종결 || 0) * feeMap[k];
       details = Object.keys(report.data).map(k => {
         const d = report.data[k];
-        if (d['접수'] || d['종결'] || d['미결'] || d['조사미결']) {
-          return <div key={k} className="mt-1 text-sm"><b>{k}</b>: 접수 {d['접수']} / 종결 {d['종결']} / 미결 {d['미결']} / 조사 {d['조사미결']}</div>;
+        if (d['접수'] || d['종결'] || d['미결']) {
+          return <div key={k} className="mt-1 text-sm"><b>{k}</b>: 접수 {d['접수'] || 0} / 종결 {d['종결'] || 0} / 미결 {d['미결'] || 0}</div>;
         }
         return null;
       });

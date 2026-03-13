@@ -14,6 +14,8 @@ export default function LeaveManagement() {
   const [leaveType, setLeaveType] = useState('연차 (종일)');
   const [memo, setMemo] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const myLeaves = allLeavesGlobal.filter(l => l.userId === currentUser?.userId).sort((a, b) => {
     const dateA = a.startDate || a.date || "";
@@ -165,7 +167,7 @@ export default function LeaveManagement() {
 
       <h3 className="text-base text-slate-800 mt-5 mb-2.5 font-bold">🌴 나의 휴가 내역</h3>
       <div className="flex flex-col gap-3">
-        {myLeaves.map(l => {
+        {myLeaves.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(l => {
           let st = l.startDate || l.date || "";
           let en = l.endDate || l.date || "";
           const dateDisp = (st === en) ? st : `${st} ~ ${en}`;
@@ -194,6 +196,28 @@ export default function LeaveManagement() {
         })}
         {myLeaves.length === 0 && <p className="text-center text-slate-400 text-sm">내역 없음</p>}
       </div>
+
+      {myLeaves.length > itemsPerPage && (
+        <div className="flex justify-center gap-2 mt-4">
+          <button 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 disabled:opacity-50 disabled:bg-slate-50 bg-white"
+          >
+            이전
+          </button>
+          <span className="px-3 py-1.5 text-sm font-bold text-slate-700">
+            {currentPage} / {Math.ceil(myLeaves.length / itemsPerPage)}
+          </span>
+          <button 
+            onClick={() => setCurrentPage(p => Math.min(Math.ceil(myLeaves.length / itemsPerPage), p + 1))}
+            disabled={currentPage === Math.ceil(myLeaves.length / itemsPerPage)}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 disabled:opacity-50 disabled:bg-slate-50 bg-white"
+          >
+            다음
+          </button>
+        </div>
+      )}
     </div>
   );
 }

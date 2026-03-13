@@ -8,7 +8,7 @@ export const KOR_HOLIDAYS: Record<string, string> = {
 
 export const feeMap: Record<string, number> = {
   "시설소유관리자": 100000, "300만원 초과": 100000, "300만원 이하": 60000, "급배수사고": 60000,
-  "골프용품": 50000, "홀인원": 30000, "가전제품": 17000, "펫보험": 15000
+  "골프용품": 50000, "홀인원": 30000, "가전제품": 20000, "펫보험": 15000
 };
 
 export const reportStructure: Record<string, Record<string, string[]>> = {

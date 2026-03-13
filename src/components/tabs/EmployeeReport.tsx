@@ -13,28 +13,40 @@ export default function EmployeeReport() {
   const [memo, setMemo] = useState('');
   const [formData, setFormData] = useState<Record<string, Record<string, number>>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showFullHistory, setShowFullHistory] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const curMonth = getKSTMonth();
-  let tRec = 0, tCom = 0, tPen = 0, tInv = 0, mRevenue = 0;
+  let tRec = 0, tCom = 0, tPen = 0, mRevenue = 0;
   
-  allUserReports.filter(r => r.date.startsWith(curMonth)).forEach(r => {
+  const sortedReportsForMonth = [...allUserReports]
+    .filter(r => r.date.startsWith(curMonth))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  let latestPending: Record<string, number> = {};
+
+  sortedReportsForMonth.forEach(r => {
     for (let g in r.data) {
       const d = r.data[g];
-      tRec += (d["접수"] || 0); tCom += (d["종결"] || 0); tPen += (d["미결"] || 0); tInv += (d["조사미결"] || 0);
+      tRec += (d["접수"] || 0); 
+      tCom += (d["종결"] || 0); 
+      if (d["미결"] !== undefined) latestPending[g] = d["미결"];
       if (feeMap[g]) mRevenue += (d["종결"] || 0) * feeMap[g];
     }
   });
 
-  const groups = currentUser?.company && currentUser?.role && currentUser.role !== '관리자'
+  tPen = Object.values(latestPending).reduce((a, b) => a + b, 0);
+
+  const baseGroups = currentUser?.company && currentUser?.role && currentUser.role !== '관리자'
     ? (reportStructure[currentUser.company]?.[currentUser.role] || ["기본 업무"])
     : [];
+  const groups = [...baseGroups, "조사미결"];
 
   useEffect(() => {
     if (!editingId) {
       const initialData: Record<string, Record<string, number>> = {};
       groups.forEach(g => {
-        initialData[g] = { "접수": 0, "종결": 0, "미결": 0, "조사미결": 0 };
+        initialData[g] = { "접수": 0, "종결": 0, "미결": 0 };
       });
       setFormData(initialData);
     }
@@ -94,8 +106,7 @@ export default function EmployeeReport() {
       editData[g] = {
         "접수": r.data[g]?.["접수"] || 0,
         "종결": r.data[g]?.["종결"] || 0,
-        "미결": r.data[g]?.["미결"] || 0,
-        "조사미결": r.data[g]?.["조사미결"] || 0
+        "미결": r.data[g]?.["미결"] || 0
       };
     });
     setFormData(editData);
@@ -115,13 +126,12 @@ export default function EmployeeReport() {
     setMemo("");
     const initialData: Record<string, Record<string, number>> = {};
     groups.forEach(g => {
-      initialData[g] = { "접수": 0, "종결": 0, "미결": 0, "조사미결": 0 };
+      initialData[g] = { "접수": 0, "종결": 0, "미결": 0 };
     });
     setFormData(initialData);
   };
 
   const sortedReports = [...allUserReports].sort((a, b) => b.date.localeCompare(a.date));
-  const limit = showFullHistory ? 10 : 5;
 
   return (
     <div className="space-y-6">
@@ -136,11 +146,10 @@ export default function EmployeeReport() {
           <div className="text-3xl font-black text-indigo-600 tracking-tight">{mRevenue.toLocaleString()}<span className="text-lg ml-1">원</span></div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-3 sm:grid-cols-3 gap-3 mb-6">
           <div className="bg-white p-4 rounded-2xl text-center border border-slate-100 shadow-sm"><span className="block font-black text-2xl text-slate-800 leading-tight">{tRec}</span><span className="block text-xs text-slate-400 mt-1 font-bold">총 접수</span></div>
           <div className="bg-white p-4 rounded-2xl text-center border border-slate-100 shadow-sm"><span className="block font-black text-2xl text-emerald-500 leading-tight">{tCom}</span><span className="block text-xs text-slate-400 mt-1 font-bold">총 종결</span></div>
           <div className="bg-white p-4 rounded-2xl text-center border border-slate-100 shadow-sm"><span className="block font-black text-2xl text-rose-500 leading-tight">{tPen}</span><span className="block text-xs text-slate-400 mt-1 font-bold">총 미결</span></div>
-          <div className="bg-white p-4 rounded-2xl text-center border border-slate-100 shadow-sm"><span className="block font-black text-2xl text-amber-500 leading-tight">{tInv}</span><span className="block text-xs text-slate-400 mt-1 font-bold">총 조사</span></div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm">
@@ -151,22 +160,24 @@ export default function EmployeeReport() {
                 <th className="bg-slate-50/80 p-3 border-b border-slate-200/60 text-center text-slate-500 font-bold">접수</th>
                 <th className="bg-slate-50/80 p-3 border-b border-slate-200/60 text-center text-slate-500 font-bold">종결</th>
                 <th className="bg-slate-50/80 p-3 border-b border-slate-200/60 text-center text-slate-500 font-bold">미결</th>
-                <th className="bg-slate-50/80 p-3 border-b border-slate-200/60 text-center text-slate-500 font-bold">조사</th>
               </tr>
             </thead>
             <tbody>
               {groups.map(g => {
-                let gRec = 0, gCom = 0, gPen = 0, gInv = 0;
-                allUserReports.filter(r => r.date.startsWith(curMonth) && r.data[g]).forEach(r => {
-                  gRec += (r.data[g]["접수"] || 0); gCom += (r.data[g]["종결"] || 0); gPen += (r.data[g]["미결"] || 0); gInv += (r.data[g]["조사미결"] || 0);
+                let gRec = 0, gCom = 0, gPen = 0;
+                let gLatestPending = 0;
+                sortedReportsForMonth.filter(r => r.data[g]).forEach(r => {
+                  gRec += (r.data[g]["접수"] || 0); 
+                  gCom += (r.data[g]["종결"] || 0); 
+                  if (r.data[g]["미결"] !== undefined) gLatestPending = r.data[g]["미결"];
                 });
+                gPen = gLatestPending;
                 return (
                   <tr key={g} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="text-left font-bold text-indigo-600 pl-4 p-3 border-b border-slate-100 w-[35%]">{g}</td>
+                    <td className="text-left font-bold text-indigo-600 pl-4 p-3 border-b border-slate-100 w-[40%]">{g}</td>
                     <td className="text-center p-3 border-b border-slate-100 font-medium text-slate-600">{gRec}</td>
                     <td className="text-center p-3 border-b border-slate-100 font-bold text-emerald-600">{gCom}</td>
                     <td className="text-center p-3 border-b border-slate-100 font-medium text-slate-600">{gPen}</td>
-                    <td className="text-center p-3 border-b border-slate-100 font-medium text-slate-600">{gInv}</td>
                   </tr>
                 );
               })}
@@ -195,21 +206,26 @@ export default function EmployeeReport() {
             <div key={gName} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
               <div className="flex justify-between items-center border-b border-slate-200/60 pb-3 mb-4">
                 <span className="text-indigo-600 font-extrabold text-base tracking-tight">{gName}</span>
-                <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">단가: {feeMap[gName]?.toLocaleString()}원</span>
+                {feeMap[gName] !== undefined && (
+                  <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">단가: {feeMap[gName].toLocaleString()}원</span>
+                )}
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                {["접수", "종결", "미결", "조사미결"].map(ind => (
-                  <div key={ind} className="bg-white p-3 rounded-xl border border-slate-200/60 shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all">
-                    <label className="block text-center text-[0.7rem] text-slate-500 mb-2 font-bold">{ind}</label>
-                    <input
-                      type="number"
-                      value={formData[gName]?.[ind] || ''}
-                      onChange={(e) => handleInputChange(gName, ind, e.target.value)}
-                      className="w-full text-center font-black text-lg border-none bg-transparent outline-none text-slate-800 placeholder:text-slate-300"
-                      placeholder="0"
-                    />
-                  </div>
-                ))}
+              <div className="grid grid-cols-3 gap-2">
+                {["접수", "종결", "미결"].map(ind => {
+                  if (gName === "조사미결" && (ind === "접수" || ind === "종결")) return null;
+                  return (
+                    <div key={ind} className="bg-white p-3 rounded-xl border border-slate-200/60 shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all">
+                      <label className="block text-center text-[0.7rem] text-slate-500 mb-2 font-bold">{ind}</label>
+                      <input
+                        type="number"
+                        value={formData[gName]?.[ind] || ''}
+                        onChange={(e) => handleInputChange(gName, ind, e.target.value)}
+                        className="w-full text-center font-black text-lg border-none bg-transparent outline-none text-slate-800 placeholder:text-slate-300"
+                        placeholder="0"
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -241,14 +257,14 @@ export default function EmployeeReport() {
           <span className="text-2xl">📑</span> 최근 마감보고 내역
         </h2>
         <div className="flex flex-col gap-4">
-          {sortedReports.slice(0, limit).map(r => {
+          {sortedReports.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(r => {
             let sum = 0;
             for (let k in r.data) if (feeMap[k]) sum += (r.data[k].종결 || 0) * feeMap[k];
             
             const details = Object.keys(r.data).map(k => {
               const d = r.data[k];
-              if (d['접수'] || d['종결'] || d['미결'] || d['조사미결']) {
-                return <div key={k} className="mt-1.5 pl-2 text-sm"><span className="font-bold text-slate-700">• {k}</span> : 접수 {d['접수'] || 0} / 종결 <span className="text-emerald-600 font-bold">{d['종결'] || 0}</span> / 미결 {d['미결'] || 0} / 조사 {d['조사미결'] || 0}</div>;
+              if (d['접수'] || d['종결'] || d['미결']) {
+                return <div key={k} className="mt-1.5 pl-2 text-sm"><span className="font-bold text-slate-700">• {k}</span> : 접수 {d['접수'] || 0} / 종결 <span className="text-emerald-600 font-bold">{d['종결'] || 0}</span> / 미결 {d['미결'] || 0}</div>;
               }
               return null;
             });
@@ -270,10 +286,27 @@ export default function EmployeeReport() {
           })}
           {sortedReports.length === 0 && <p className="text-center text-slate-400 p-6 font-medium bg-slate-50/50 rounded-2xl">내역이 없습니다.</p>}
         </div>
-        {!showFullHistory && sortedReports.length > 5 && (
-          <button onClick={() => setShowFullHistory(true)} className="w-full mt-6 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 p-4 rounded-2xl font-bold transition-colors shadow-sm">
-            내역 더보기 (최대 10일)
-          </button>
+
+        {sortedReports.length > itemsPerPage && (
+          <div className="flex justify-center gap-2 mt-6">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 disabled:opacity-50 disabled:bg-slate-50 bg-white shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              이전
+            </button>
+            <span className="px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-200 rounded-xl shadow-sm">
+              {currentPage} / {Math.ceil(sortedReports.length / itemsPerPage)}
+            </span>
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(Math.ceil(sortedReports.length / itemsPerPage), p + 1))}
+              disabled={currentPage === Math.ceil(sortedReports.length / itemsPerPage)}
+              className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 disabled:opacity-50 disabled:bg-slate-50 bg-white shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              다음
+            </button>
+          </div>
         )}
       </div>
     </div>

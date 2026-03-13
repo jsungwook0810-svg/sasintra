@@ -10,7 +10,7 @@ export default function AdminReports() {
   const [selectedCompany, setSelectedCompany] = useState('삼성');
 
   const renderStats = () => {
-    let totalRev = 0, tRec = 0, tCom = 0, tPen = 0, tInv = 0;
+    let totalRev = 0, tRec = 0, tCom = 0, tPen = 0;
     const itemSummary: Record<string, any> = {};
     const userStatsHtml: any[] = [];
 
@@ -21,25 +21,25 @@ export default function AdminReports() {
       const p = calculatePerformance(u.userId, month, globalStaffList, globalAllReports, globalActualRevenues);
       if (p) {
         totalRev += p.revenue;
-        p.reports.forEach((r: any) => {
-          for (let g in r.data) {
-            const d = r.data[g];
-            tRec += (d["접수"] || 0); tCom += (d["종결"] || 0); tPen += (d["미결"] || 0); tInv += (d["조사미결"] || 0);
+        
+        // Use itemBreakdown for totals instead of summing over reports
+        Object.keys(p.itemBreakdown).forEach(g => {
+          const d = p.itemBreakdown[g];
+          tRec += (d.rec || 0); tCom += (d.com || 0); tPen += (d.pen || 0);
 
-            if (!itemSummary[g]) itemSummary[g] = { rec: 0, com: 0, pen: 0, inv: 0, rev: 0 };
-            itemSummary[g].rec += (d["접수"] || 0); itemSummary[g].com += (d["종결"] || 0);
-            itemSummary[g].pen += (d["미결"] || 0); itemSummary[g].inv += (d["조사미결"] || 0);
-            if (feeMap[g]) itemSummary[g].rev += (d["종결"] || 0) * feeMap[g];
-          }
+          if (!itemSummary[g]) itemSummary[g] = { rec: 0, com: 0, pen: 0, rev: 0 };
+          itemSummary[g].rec += (d.rec || 0); itemSummary[g].com += (d.com || 0);
+          itemSummary[g].pen += (d.pen || 0); 
+          itemSummary[g].rev += (d.rev || 0);
         });
 
         if (u.role !== '관리자' && p.reports.length > 0) {
-          let uRec = 0, uCom = 0, uPen = 0, uInv = 0;
+          let uRec = 0, uCom = 0, uPen = 0;
           const details = Object.keys(p.itemBreakdown).map(k => {
             const d = p.itemBreakdown[k];
-            if (d.rec > 0 || d.com > 0 || d.pen > 0 || d.inv > 0) {
-              uRec += d.rec; uCom += d.com; uPen += d.pen; uInv += d.inv;
-              return <div key={k} className="mt-1 pl-1.5">• {k} : 접수 {d.rec} / 종결 {d.com} / 미결 {d.pen} / 조사 {d.inv}</div>;
+            if (d.rec > 0 || d.com > 0 || d.pen > 0) {
+              uRec += d.rec; uCom += d.com; uPen += d.pen;
+              return <div key={k} className="mt-1 pl-1.5">• {k} : 접수 {d.rec} / 종결 {d.com} / 미결 {d.pen}</div>;
             }
             return null;
           });
@@ -54,7 +54,6 @@ export default function AdminReports() {
                 <div className="flex-1">접수<br /><span className="text-lg">{uRec}</span></div>
                 <div className="flex-1 text-emerald-500">종결<br /><span className="text-lg">{uCom}</span></div>
                 <div className="flex-1 text-red-500">미결<br /><span className="text-lg">{uPen}</span></div>
-                <div className="flex-1 text-amber-500">조사<br /><span className="text-lg">{uInv}</span></div>
               </div>
               <div className="text-slate-600 text-xs leading-relaxed">{details}</div>
             </div>
@@ -74,11 +73,10 @@ export default function AdminReports() {
             <span className="block font-extrabold text-2xl text-blue-500 leading-tight">{totalRev.toLocaleString()}원</span>
             <span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">{selectedCompany} 합산 가매출액</span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-slate-800">{tRec}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 접수</span></div>
             <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-emerald-500">{tCom}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 종결</span></div>
             <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-red-500">{tPen}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 미결</span></div>
-            <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-amber-500">{tInv}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 조사</span></div>
           </div>
         </div>
 
@@ -92,21 +90,19 @@ export default function AdminReports() {
                   <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">접수</th>
                   <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">종결</th>
                   <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">미결</th>
-                  <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">조사</th>
                   <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">매출</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.keys(itemSummary).map(it => {
                   const s = itemSummary[it];
-                  if (s.rec > 0 || s.com > 0 || s.pen > 0 || s.inv > 0) {
+                  if (s.rec > 0 || s.com > 0 || s.pen > 0) {
                     return (
                       <tr key={it}>
                         <td className="text-left font-bold text-blue-500 pl-2 p-2 border-b border-slate-100">{it}</td>
                         <td className="text-center p-2 border-b border-slate-100">{s.rec}</td>
                         <td className="text-center p-2 border-b border-slate-100">{s.com}</td>
                         <td className="text-center p-2 border-b border-slate-100">{s.pen}</td>
-                        <td className="text-center p-2 border-b border-slate-100">{s.inv}</td>
                         <td className="text-center p-2 border-b border-slate-100 font-extrabold">{s.rev.toLocaleString()}원</td>
                       </tr>
                     );
@@ -135,12 +131,14 @@ export default function AdminReports() {
     const unreported: any[] = [];
     const reported: any[] = [];
 
-    globalStaffList.filter(u => 
-      u.company === selectedCompany && 
-      u.role !== '관리자' && 
-      u.rank !== '팀장' &&
-      (u.approved || globalAllReports.some(r => r.userId === u.userId && r.date === liveDate))
-    ).forEach(u => {
+    globalStaffList.filter(u => {
+      if (u.company !== selectedCompany || u.role === '관리자' || u.rank === '팀장') return false;
+      const hasReportedToday = globalAllReports.some(r => r.userId === u.userId && r.date === liveDate);
+      if (hasReportedToday) return true;
+      if (!u.approved) return false;
+      if (u.isResigned && u.resignDate && u.resignDate < liveDate) return false;
+      return true;
+    }).forEach(u => {
       if (!submittedUids.includes(u.userId)) {
         unreported.push(
           <div key={u.userId} className="bg-white p-3 rounded-xl border border-slate-200 border-l-[4px] border-l-red-500 shadow-sm mb-2">
@@ -154,8 +152,8 @@ export default function AdminReports() {
         const details = Object.keys(rep.data).map(k => {
           const d = rep.data[k];
           if (feeMap[k]) dRev += (d.종결 || 0) * feeMap[k];
-          if (d['접수'] || d['종결'] || d['미결'] || d['조사미결']) {
-            return <div key={k} className="mt-1 pl-1.5">• {k} : 접수 {d['접수'] || 0} / 종결 {d['종결'] || 0} / 미결 {d['미결'] || 0} / 조사 {d['조사미결'] || 0}</div>;
+          if (d['접수'] || d['종결'] || d['미결']) {
+            return <div key={k} className="mt-1 pl-1.5">• {k} : 접수 {d['접수'] || 0} / 종결 {d['종결'] || 0} / 미결 {d['미결'] || 0}</div>;
           }
           return null;
         });
