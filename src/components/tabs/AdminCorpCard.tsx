@@ -26,27 +26,8 @@ export default function AdminCorpCard() {
   const totalUsed = monthlyUsages.reduce((sum, u) => sum + Number(u.amount), 0);
   const remainingBudget = totalBudget - totalUsed;
 
-  // Calendar logic
-  const [yearStr, monthStr] = month.split('-');
-  const year = parseInt(yearStr);
-  const monthIdx = parseInt(monthStr) - 1;
-  const firstDay = new Date(year, monthIdx, 1).getDay();
-  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
-
-  const days = [];
-  for (let i = 0; i < firstDay; i++) days.push(null);
-  for (let i = 1; i <= daysInMonth; i++) days.push(i);
-
-  const handleDayClick = (day: number) => {
-    const dateStr = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    setSelectedDate(dateStr);
-    setAmount('');
-    setPurpose('');
-    setIsModalOpen(true);
-  };
-
   const handleSave = async () => {
-    if (!amount || !purpose) return alert('금액과 용도를 모두 입력해주세요.');
+    if (!selectedDate || !amount || !purpose) return alert('날짜, 금액, 용도를 모두 입력해주세요.');
     
     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'corp_card_usages'), {
       date: selectedDate,
@@ -98,55 +79,32 @@ export default function AdminCorpCard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center text-xs font-bold text-slate-500">
-            <div className="p-3 text-rose-500">일</div>
-            <div className="p-3">월</div>
-            <div className="p-3">화</div>
-            <div className="p-3">수</div>
-            <div className="p-3">목</div>
-            <div className="p-3">금</div>
-            <div className="p-3 text-blue-500">토</div>
-          </div>
-          <div className="grid grid-cols-7 auto-rows-fr">
-            {days.map((d, i) => {
-              if (!d) return <div key={`empty-${i}`} className="min-h-[100px] border-b border-r border-slate-100 bg-slate-50/30"></div>;
-              
-              const dateStr = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-              const dayUsages = monthlyUsages.filter(u => u.date === dateStr);
-              const isToday = dateStr === getKSTToday();
-              const holidayName = KOR_HOLIDAYS[dateStr];
-              const isWeekend = new Date(year, monthIdx, d).getDay() === 0 || new Date(year, monthIdx, d).getDay() === 6;
-              const isRedDay = isWeekend || !!holidayName;
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-slate-800">사용 내역</h3>
+          <button onClick={() => { setSelectedDate(getKSTToday()); setAmount(''); setPurpose(''); setIsModalOpen(true); }} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/20">
+            + 내역 추가
+          </button>
+        </div>
 
-              return (
-                <div 
-                  key={d} 
-                  onClick={() => handleDayClick(d)}
-                  className={`min-h-[100px] border-b border-r border-slate-100 p-2 cursor-pointer hover:bg-purple-50 transition-colors relative ${isToday ? 'bg-indigo-50/30' : ''}`}
-                >
-                  <div className={`text-xs font-bold mb-1 flex justify-between items-start ${isRedDay ? 'text-rose-500' : 'text-slate-600'}`}>
-                    <div>
-                      {d}
-                      {isToday && <span className="ml-1 text-[0.6rem] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">오늘</span>}
-                    </div>
-                    {holidayName && <span className="text-[0.6rem] text-rose-500 bg-rose-50 px-1 rounded">{holidayName}</span>}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {sortedMonthlyUsages.length === 0 ? (
+            <p className="text-center text-slate-500 p-6 text-sm">등록된 사용 내역이 없습니다.</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {sortedMonthlyUsages.map(u => (
+                <div key={u.id} className="p-4 flex justify-between items-center">
+                  <div>
+                    <div className="text-xs font-bold text-slate-400">{u.date}</div>
+                    <div className="text-sm font-bold text-slate-800">{u.purpose}</div>
                   </div>
-                  <div className="space-y-1">
-                    {dayUsages.map(u => (
-                      <div key={u.id} className="text-[0.65rem] bg-rose-50 text-rose-600 p-1 rounded border border-rose-100 leading-tight" onClick={(e) => e.stopPropagation()}>
-                        <div className="font-bold flex justify-between">
-                          <span>-{u.amount.toLocaleString()}</span>
-                          <button onClick={() => handleDelete(u.id)} className="text-rose-400 hover:text-rose-700">×</button>
-                        </div>
-                        <div className="truncate text-slate-500">{u.purpose}</div>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-black text-rose-600">-{u.amount.toLocaleString()}원</span>
+                    <button onClick={() => handleDelete(u.id)} className="text-slate-400 hover:text-rose-500">✕</button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="mt-8">
@@ -201,8 +159,17 @@ export default function AdminCorpCard() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-white p-8 rounded-[32px] w-full max-w-[420px] shadow-2xl border border-white/20">
             <h2 className="text-xl font-extrabold mb-2 text-slate-800 tracking-tight">💳 법인카드 사용 내역 추가</h2>
-            <p className="font-bold text-purple-600 mb-6">{selectedDate}</p>
             
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-slate-600 mb-2">사용 날짜</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm bg-white/50 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 outline-none transition-all font-medium"
+              />
+            </div>
+
             <div className="mb-4">
               <label className="block text-sm font-bold text-slate-600 mb-2">사용 금액 (원)</label>
               <input

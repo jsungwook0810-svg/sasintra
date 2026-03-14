@@ -8,6 +8,8 @@ export default function AdminReports() {
   const [month, setMonth] = useState(getKSTMonth());
   const [liveDate, setLiveDate] = useState(getKSTToday());
   const [selectedCompany, setSelectedCompany] = useState('삼성');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const renderStats = () => {
     let totalRev = 0, tRec = 0, tCom = 0, tPen = 0;
@@ -171,6 +173,8 @@ export default function AdminReports() {
       }
     });
 
+    const paginatedUnreported = unreported.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     return (
       <div className="space-y-4">
         <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-t-[5px] border-amber-500">
@@ -178,15 +182,36 @@ export default function AdminReports() {
           <input
             type="date"
             value={liveDate}
-            onChange={(e) => setLiveDate(e.target.value)}
+            onChange={(e) => { setLiveDate(e.target.value); setCurrentPage(1); }}
             className="w-full p-2.5 rounded-lg border border-slate-300 outline-none focus:border-blue-500"
           />
         </div>
         <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-t-[5px] border-red-500">
           <h2 className="text-base text-red-500 m-0 mb-2.5 font-bold">⚠️ {selectedCompany} 마감보고 미제출자</h2>
           <div className="flex flex-col">
-            {unreported.length > 0 ? unreported : <p className="text-center text-sm text-slate-500">미제출자가 없습니다.</p>}
+            {paginatedUnreported.length > 0 ? paginatedUnreported : <p className="text-center text-sm text-slate-500">미제출자가 없습니다.</p>}
           </div>
+          {unreported.length > itemsPerPage && (
+            <div className="flex justify-center gap-2 mt-4">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-50 bg-white shadow-sm"
+              >
+                이전
+              </button>
+              <span className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl shadow-sm">
+                {currentPage} / {Math.ceil(unreported.length / itemsPerPage)}
+              </span>
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(unreported.length / itemsPerPage), p + 1))}
+                disabled={currentPage === Math.ceil(unreported.length / itemsPerPage)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-50 bg-white shadow-sm"
+              >
+                다음
+              </button>
+            </div>
+          )}
         </div>
         <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
           <h2 className="text-lg m-0 mb-3 font-bold">👥 {selectedCompany} 직원별 보고 현황</h2>

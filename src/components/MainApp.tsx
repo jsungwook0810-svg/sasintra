@@ -44,6 +44,7 @@ export default function MainApp() {
       ];
 
   const [activeTab, setActiveTab] = useState(tabs[0].id);
+  const [isNavOpen, setIsNavOpen] = useState(false);
 
   const todayStr = getKSTToday();
   const hasReportToday = allUserReports.some(r => r.date === todayStr);
@@ -79,7 +80,93 @@ export default function MainApp() {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-30px)]">
+    <div className="flex flex-col min-h-[calc(100vh-30px)] relative">
+      {/* Hamburger Button and Active Tab Title */}
+      <div className="flex items-center gap-3 mb-6">
+        <button 
+          onClick={() => setIsNavOpen(true)}
+          className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+        <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
+          {tabs.find(t => t.id === activeTab)?.label.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim()}
+        </h2>
+      </div>
+
+      {/* Navigation Drawer Overlay */}
+      {isNavOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 transition-opacity"
+          onClick={() => setIsNavOpen(false)}
+        ></div>
+      )}
+
+      {/* Navigation Drawer */}
+      <div className={`fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isNavOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        
+        {/* Drawer Header: User Profile */}
+        <div className="bg-slate-900 text-white p-6 flex flex-col gap-5">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <div className="font-extrabold text-xl tracking-tight">{currentUser?.name}님</div>
+              <div className="text-xs text-slate-400 mt-1.5 font-medium flex items-center gap-2">
+                <span className="bg-slate-800 px-2 py-0.5 rounded-md text-slate-300">{currentUser?.company}</span>
+                <span>{currentUser?.role}</span>
+                <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
+                <span>{currentUser?.rank}</span>
+              </div>
+            </div>
+            <button onClick={() => setIsNavOpen(false)} className="text-slate-400 hover:text-white transition-colors p-1">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <button
+            onClick={() => { setShowProfileModal(true); setIsNavOpen(false); }}
+            className="w-full py-2.5 bg-white/10 text-xs text-white rounded-xl font-semibold hover:bg-white/20 transition-all border border-white/10"
+          >
+            내정보수정
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto py-4">
+          <nav className="flex flex-col gap-1 px-4">
+            {tabs.map(t => (
+              <div
+                key={t.id}
+                onClick={() => {
+                  setActiveTab(t.id);
+                  setIsNavOpen(false);
+                }}
+                className={`p-4 rounded-xl text-sm font-bold cursor-pointer transition-all duration-200 ${
+                  activeTab === t.id
+                    ? 'bg-indigo-50 text-indigo-600'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                }`}
+              >
+                {t.label}
+              </div>
+            ))}
+          </nav>
+        </div>
+
+        <div className="p-4 border-t border-slate-100">
+          <button
+            onClick={logout}
+            className="w-full p-4 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-100 transition-colors flex items-center justify-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+            </svg>
+            로그아웃
+          </button>
+        </div>
+      </div>
+
       {shouldShowReportReminder && (
         <div 
           onClick={() => setActiveTab('subViewReport')}
@@ -97,48 +184,6 @@ export default function MainApp() {
           🚨 공지사항이 있습니다.
         </div>
       )}
-
-      <div className="bg-slate-900/95 backdrop-blur-md text-white flex justify-between items-center p-5 rounded-3xl mb-6 shadow-xl shadow-slate-900/10 border border-slate-800">
-        <div className="flex-1">
-          <div className="font-extrabold text-xl tracking-tight">{currentUser?.name}님</div>
-          <div className="text-sm text-slate-400 mt-1.5 font-medium flex items-center gap-2">
-            <span className="bg-slate-800 px-2 py-0.5 rounded-md text-slate-300">{currentUser?.company}</span>
-            <span>{currentUser?.role}</span>
-            <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-            <span>{currentUser?.rank}</span>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowProfileModal(true)}
-            className="px-4 py-2.5 bg-white/5 text-xs text-white rounded-xl font-semibold hover:bg-white/10 transition-all border border-white/10"
-          >
-            내정보수정
-          </button>
-          <button
-            onClick={logout}
-            className="px-4 py-2.5 bg-rose-500/10 text-xs text-rose-400 rounded-xl font-semibold hover:bg-rose-500/20 transition-all border border-rose-500/20"
-          >
-            로그아웃
-          </button>
-        </div>
-      </div>
-
-      <nav className="grid grid-cols-3 gap-2 mb-6 p-1.5 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50">
-        {tabs.map(t => (
-          <div
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`p-3 text-center rounded-xl text-xs sm:text-sm font-bold cursor-pointer transition-all duration-200 ${
-              activeTab === t.id
-                ? 'bg-white text-indigo-600 shadow-md shadow-slate-200/50 ring-1 ring-slate-100'
-                : 'text-slate-500 hover:bg-white/50 hover:text-slate-700'
-            }`}
-          >
-            {t.label}
-          </div>
-        ))}
-      </nav>
 
       <div className="flex-1">
         {activeTab === 'adminViewSettlement' && <AdminSettlement />}

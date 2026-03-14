@@ -12,6 +12,8 @@ export default function AdminSettlement() {
   const [actualRevenue, setActualRevenue] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState('삼성');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const staffList = globalStaffList.filter(u => {
     if (u.rank === '팀장' || u.role === '관리자' || u.company !== selectedCompany) return false;
@@ -82,7 +84,7 @@ export default function AdminSettlement() {
             <p className="text-center text-sm text-slate-500 py-4 bg-white/50 rounded-xl">해당 보험사에 등록된 직원이 없습니다.</p>
           ) : (
             <>
-              {staffList.map(u => {
+              {staffList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(u => {
                 const p = calculatePerformance(u.userId, month, globalStaffList, globalAllReports, globalActualRevenues);
                 if (!p) return null;
                 const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === month);
@@ -99,10 +101,27 @@ export default function AdminSettlement() {
                   </div>
                 );
               })}
-              {staffList.filter(u => {
-                const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === month);
-                return !act;
-              }).length === 0 && <p className="text-center text-sm text-emerald-600 font-bold py-4 bg-emerald-50/50 rounded-xl">🎉 전원 정산 완료!</p>}
+              {staffList.length > itemsPerPage && (
+                <div className="flex justify-center gap-2 mt-4">
+                  <button 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-50 bg-white shadow-sm"
+                  >
+                    이전
+                  </button>
+                  <span className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl shadow-sm">
+                    {currentPage} / {Math.ceil(staffList.length / itemsPerPage)}
+                  </span>
+                  <button 
+                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(staffList.length / itemsPerPage), p + 1))}
+                    disabled={currentPage === Math.ceil(staffList.length / itemsPerPage)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-50 bg-white shadow-sm"
+                  >
+                    다음
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -176,6 +195,7 @@ export default function AdminSettlement() {
       if (act && act.amount > 0) {
         totalMonthlyRevenue += act.amount;
         activeStaffCount++;
+        
         monthlyRankings.push({
           name: u.name,
           company: u.company,
@@ -195,6 +215,9 @@ export default function AdminSettlement() {
       annualRevenues[u.userId] = { name: u.name, company: u.company, role: u.role, rank: u.rank, total: 0 };
     });
 
+    let annualTotalRevenue = 0;
+    const monthsWithRevenue = new Set<string>();
+
     // We need to sum up all months in the selected year
     for (let m = 1; m <= 12; m++) {
       const mStr = `${year}-${m.toString().padStart(2, '0')}`;
@@ -202,9 +225,14 @@ export default function AdminSettlement() {
         const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === mStr);
         if (act && act.amount > 0) {
           annualRevenues[u.userId].total += act.amount;
+          annualTotalRevenue += act.amount;
+          monthsWithRevenue.add(mStr);
         }
       });
     }
+
+    const activeMonthsCount = monthsWithRevenue.size;
+    const annualMonthlyAverage = activeMonthsCount > 0 ? Math.round(annualTotalRevenue / activeMonthsCount) : 0;
 
     const annualList = Object.values(annualRevenues).filter(u => u.total > 0).sort((a, b) => b.total - a.total);
     const highestAnnual = annualList.length > 0 ? annualList[0] : null;
@@ -227,7 +255,7 @@ export default function AdminSettlement() {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div className="bg-indigo-50/80 p-6 rounded-3xl border border-indigo-100 shadow-sm">
             <div className="text-sm font-bold text-indigo-500 mb-2">전 직원 누적 월매출 ({month})</div>
             <div className="text-3xl font-black text-indigo-700 tracking-tight">{totalMonthlyRevenue.toLocaleString()}<span className="text-lg ml-1">원</span></div>
@@ -235,6 +263,17 @@ export default function AdminSettlement() {
           <div className="bg-purple-50/80 p-6 rounded-3xl border border-purple-100 shadow-sm">
             <div className="text-sm font-bold text-purple-500 mb-2">전 직원 평균 월매출 ({month})</div>
             <div className="text-3xl font-black text-purple-700 tracking-tight">{averageMonthlyRevenue.toLocaleString()}<span className="text-lg ml-1">원</span></div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <div className="bg-emerald-50/80 p-6 rounded-3xl border border-emerald-100 shadow-sm">
+            <div className="text-sm font-bold text-emerald-600 mb-2">{year}년 총 누적 매출</div>
+            <div className="text-3xl font-black text-emerald-700 tracking-tight">{annualTotalRevenue.toLocaleString()}<span className="text-lg ml-1">원</span></div>
+          </div>
+          <div className="bg-teal-50/80 p-6 rounded-3xl border border-teal-100 shadow-sm">
+            <div className="text-sm font-bold text-teal-600 mb-2">{year}년 월 평균 매출</div>
+            <div className="text-3xl font-black text-teal-700 tracking-tight">{annualMonthlyAverage.toLocaleString()}<span className="text-lg ml-1">원</span></div>
           </div>
         </div>
 

@@ -8,12 +8,6 @@
 body {
   font-family: "Pretendard", sans-serif;
   background-color: #f8fafc;
-  background-image: 
-    radial-gradient(at 0% 0%, hsla(210, 100%, 93%, 1) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(250, 100%, 95%, 1) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, hsla(210, 100%, 93%, 1) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsla(250, 100%, 95%, 1) 0px, transparent 50%);
-  background-attachment: fixed;
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
 }
@@ -32,4 +26,64 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Seasonal Effects Animations */
+@keyframes fall {
+  0% { top: -10%; }
+  100% { top: 110%; }
+}
+@keyframes sway {
+  0% { transform: translateX(-20px) rotate(-20deg); }
+  100% { transform: translateX(20px) rotate(20deg); }
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes wave-animation {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.petal {
+  position: absolute;
+  background: #fbcfe8;
+  border-radius: 15px 0 15px 15px;
+  opacity: 0.8;
+  box-shadow: 0 0 4px rgba(251, 207, 232, 0.8);
+}
+
+.leaf {
+  position: absolute;
+  background: #fb923c;
+  border-radius: 0 15px 15px 15px;
+  opacity: 0.8;
+  box-shadow: 0 0 4px rgba(251, 146, 60, 0.5);
+}
+
+.snow {
+  position: absolute;
+  background: #ffffff;
+  border-radius: 50%;
+  opacity: 0.9;
+  box-shadow: 0 0 6px #ffffff;
+}
+
+.wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 800 88.7" xmlns="http://www.w3.org/2000/svg"><path d="M0,40 C150,80 250,0 400,40 C550,80 650,0 800,40 L800,88.7 L0,88.7 Z" fill="%2338bdf8" opacity="0.4"/></svg>') repeat-x;
+  background-size: 50% 100%;
+  animation: wave-animation 12s linear infinite;
+}
+
+.wave:nth-child(2) {
+  bottom: -15px;
+  animation: wave-animation 18s linear infinite reverse;
+  background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 800 88.7" xmlns="http://www.w3.org/2000/svg"><path d="M0,40 C150,80 250,0 400,40 C550,80 650,0 800,40 L800,88.7 L0,88.7 Z" fill="%230ea5e9" opacity="0.4"/></svg>') repeat-x;
+  background-size: 50% 100%;
 }

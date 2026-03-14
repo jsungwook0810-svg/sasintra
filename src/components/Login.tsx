@@ -53,7 +53,7 @@ export default function Login() {
           <div className="bg-gradient-to-br from-blue-600 to-indigo-600 w-[72px] h-[72px] mx-auto rounded-2xl flex items-center justify-center text-white font-black text-2xl mb-6 shadow-lg shadow-blue-500/30 ring-4 ring-white">
             SAS
           </div>
-          <h2 className="text-2xl text-slate-800 m-0 font-extrabold tracking-tight">인트라넷 로그인</h2>
+          <h2 className="text-2xl text-slate-800 m-0 font-extrabold tracking-tight">Login</h2>
           <p className="text-slate-500 text-sm mt-2 font-medium">업무 포탈에 오신 것을 환영합니다</p>
           
           {errorMsg && (
