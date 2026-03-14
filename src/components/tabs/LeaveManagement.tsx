@@ -117,6 +117,32 @@ export default function LeaveManagement() {
     setMemo('');
   };
 
+  const handleKakaoShare = (leave: any) => {
+    const st = leave.startDate || leave.date || "";
+    const en = leave.endDate || leave.date || "";
+    const dateDisp = (st === en) ? st : `${st} ~ ${en}`;
+    const typeName = leave.type || '연차';
+    
+    const message = `[휴가 보고]\n이름: ${currentUser?.name}\n기간: ${dateDisp}\n종류: ${typeName} (${leave.days}일)\n사유: ${leave.memo || '개인 사정'}`;
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      window.location.href = `kakaotalk://send?text=${encodeURIComponent(message)}`;
+      setTimeout(() => {
+        navigator.clipboard.writeText(message).then(() => {
+          // alert("카카오톡이 열리지 않을 경우를 대비해 클립보드에 복사되었습니다.");
+        }).catch(() => {});
+      }, 500);
+    } else {
+      navigator.clipboard.writeText(message).then(() => {
+        alert("휴가 내용이 클립보드에 복사되었습니다. PC 카카오톡에 붙여넣기 해주세요.");
+      }).catch(() => {
+        alert("클립보드 복사에 실패했습니다.");
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2.5 mb-4">
@@ -186,9 +212,17 @@ export default function LeaveManagement() {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-1.5 ml-3 shrink-0">
-                  <button onClick={() => handleEdit(l.id)} className="bg-blue-500 text-white px-3 py-1 text-xs rounded-lg font-bold h-fit">수정</button>
-                  <button onClick={() => handleDelete(l.id)} className="bg-red-500 text-white px-3 py-1 text-xs rounded-lg font-bold h-fit">삭제</button>
+                <div className="flex flex-col gap-1.5 ml-3 shrink-0 w-[72px] sm:w-[80px]">
+                  <button onClick={() => handleKakaoShare(l)} className="w-full bg-[#FEE500] text-[#000000] px-2 py-1.5 text-[10px] sm:text-xs rounded-lg font-bold flex items-center justify-center gap-1 shadow-sm transition-transform active:scale-95">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 sm:w-3.5 sm:h-3.5">
+                      <path d="M12 3c-5.523 0-10 3.582-10 8 0 2.864 1.802 5.373 4.545 6.812-.455 1.667-1.45 5.228-1.5 5.438-.05.21.173.24.31.14 0 0 3.86-2.58 5.43-3.66.4.04.8.06 1.215.06 5.523 0 10-3.582 10-8s-4.477-8-10-8z" />
+                    </svg>
+                    보고
+                  </button>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleEdit(l.id)} className="flex-1 bg-slate-100 text-slate-600 border border-slate-200 py-1 text-[10px] rounded-md font-bold transition-transform active:scale-95">수정</button>
+                    <button onClick={() => handleDelete(l.id)} className="flex-1 bg-rose-50 text-rose-500 border border-rose-100 py-1 text-[10px] rounded-md font-bold transition-transform active:scale-95">삭제</button>
+                  </div>
                 </div>
               </div>
             </div>

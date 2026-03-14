@@ -24,6 +24,13 @@ export default function AdminStaff() {
   const [resignTarget, setResignTarget] = useState<any>(null);
   const [resignDate, setResignDate] = useState(new Date().toISOString().split('T')[0]);
 
+  const [pageMap, setPageMap] = useState<Record<string, number>>({});
+  const [resignedPage, setResignedPage] = useState(1);
+
+  const handlePageChange = (key: string, newPage: number) => {
+    setPageMap(prev => ({ ...prev, [key]: newPage }));
+  };
+
   const handleCheckId = async () => {
     if (!id || id.length < 4) {
       alert("아이디 4자 이상 필수");
@@ -124,12 +131,36 @@ export default function AdminStaff() {
   const activeStaff = globalStaffList.filter(u => u.approved && !u.isResigned);
   const resignedStaff = globalStaffList.filter(u => u.approved && u.isResigned);
 
+  const rankWeight: Record<string, number> = {
+    '부장': 1,
+    '팀장': 2,
+    '과장': 3,
+    '대리': 4,
+    '주임': 5,
+    '사원': 6
+  };
+
+  const sortUsers = (users: any[]) => {
+    return [...users].sort((a, b) => {
+      const rankA = rankWeight[a.rank] || 99;
+      const rankB = rankWeight[b.rank] || 99;
+      if (rankA !== rankB) return rankA - rankB;
+      return a.name.localeCompare(b.name);
+    });
+  };
+
   const groupedStaff = activeStaff.reduce((acc, user) => {
     const key = `${user.company}|${user.role}`;
     if (!acc[key]) acc[key] = [];
     acc[key].push(user);
     return acc;
   }, {} as Record<string, any[]>);
+
+  Object.keys(groupedStaff).forEach(key => {
+    groupedStaff[key] = sortUsers(groupedStaff[key]);
+  });
+
+  const sortedResignedStaff = sortUsers(resignedStaff);
 
   const getRankCounts = (users: any[]) => {
     const counts = users.reduce((acc, u) => {
@@ -236,6 +267,13 @@ export default function AdminStaff() {
           {Object.keys(groupedStaff).sort().map(key => {
             const [comp, r] = key.split('|');
             const users = groupedStaff[key];
+            
+            const currentPage = pageMap[key] || 1;
+            const itemsPerPage = 5;
+            const totalPages = Math.ceil(users.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const paginatedUsers = users.slice(startIndex, startIndex + itemsPerPage);
+
             return (
               <div key={key} className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
@@ -248,7 +286,7 @@ export default function AdminStaff() {
                 </div>
                 
                 <div className="flex flex-col gap-3">
-                  {users.map(u => (
+                  {paginatedUsers.map(u => (
                     <div key={u.userId} className="bg-white p-4 rounded-xl border border-slate-200 border-l-[4px] border-l-blue-500 shadow-sm">
                       <div className="flex justify-between items-center">
                         <span>
@@ -263,6 +301,28 @@ export default function AdminStaff() {
                     </div>
                   ))}
                 </div>
+
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-5">
+                    <button
+                      onClick={() => handlePageChange(key, Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 disabled:opacity-50 font-bold text-xs hover:bg-slate-200 transition-colors"
+                    >
+                      이전
+                    </button>
+                    <span className="text-xs font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => handlePageChange(key, Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 disabled:opacity-50 font-bold text-xs hover:bg-slate-200 transition-colors"
+                    >
+                      다음
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -276,37 +336,66 @@ export default function AdminStaff() {
                 {showResigned ? '👋 퇴사자 숨기기' : `👋 퇴사자 보기 (${resignedStaff.length}명)`}
               </button>
               
-              {showResigned && (
-                <div className="bg-slate-50 p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-slate-200 mt-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                    <h2 className="text-lg m-0 font-bold text-slate-600 flex items-center gap-2">
-                      <span className="text-slate-400">👋</span> 퇴사자 명단
-                    </h2>
-                    <div className="text-xs font-medium text-slate-500 bg-slate-200 px-3 py-1.5 rounded-lg">
-                      총 {resignedStaff.length}명
+              {showResigned && (() => {
+                const itemsPerPage = 5;
+                const totalPages = Math.ceil(sortedResignedStaff.length / itemsPerPage);
+                const startIndex = (resignedPage - 1) * itemsPerPage;
+                const paginatedResigned = sortedResignedStaff.slice(startIndex, startIndex + itemsPerPage);
+
+                return (
+                  <div className="bg-slate-50 p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-slate-200 mt-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                      <h2 className="text-lg m-0 font-bold text-slate-600 flex items-center gap-2">
+                        <span className="text-slate-400">👋</span> 퇴사자 명단
+                      </h2>
+                      <div className="text-xs font-medium text-slate-500 bg-slate-200 px-3 py-1.5 rounded-lg">
+                        총 {sortedResignedStaff.length}명
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex flex-col gap-3">
-                    {resignedStaff.map(u => (
-                      <div key={u.userId} className="bg-white p-4 rounded-xl border border-slate-200 border-l-[4px] border-l-slate-400 shadow-sm opacity-80">
-                        <div className="flex justify-between items-center">
-                          <span>
-                            <b className="text-sm text-slate-700">{u.name}</b> 
-                            <small className="text-slate-500 ml-1">({u.userId} / {u.company}/{u.role}/{u.rank})</small>
-                            <span className="ml-2 bg-slate-200 text-slate-600 text-[0.65rem] px-2 py-0.5 rounded-full font-bold">퇴사자</span>
-                          </span>
-                          <div className="flex gap-1.5">
-                            <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold">수정</button>
-                            <button onClick={() => cancelResign(u)} className="bg-slate-400 text-white px-3 py-1.5 text-xs rounded-lg font-bold">퇴사취소</button>
-                            <button onClick={() => handleHardDelete(u.userId)} className="bg-rose-50 text-rose-500 hover:bg-rose-100 px-3 py-1.5 text-xs rounded-lg font-bold">영구삭제</button>
+                    
+                    <div className="flex flex-col gap-3">
+                      {paginatedResigned.map(u => (
+                        <div key={u.userId} className="bg-white p-4 rounded-xl border border-slate-200 border-l-[4px] border-l-slate-400 shadow-sm opacity-80">
+                          <div className="flex justify-between items-center">
+                            <span>
+                              <b className="text-sm text-slate-700">{u.name}</b> 
+                              <small className="text-slate-500 ml-1">({u.userId} / {u.company}/{u.role}/{u.rank})</small>
+                              <span className="ml-2 bg-slate-200 text-slate-600 text-[0.65rem] px-2 py-0.5 rounded-full font-bold">퇴사자</span>
+                            </span>
+                            <div className="flex gap-1.5">
+                              <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold">수정</button>
+                              <button onClick={() => cancelResign(u)} className="bg-slate-400 text-white px-3 py-1.5 text-xs rounded-lg font-bold">퇴사취소</button>
+                              <button onClick={() => handleHardDelete(u.userId)} className="bg-rose-50 text-rose-500 hover:bg-rose-100 px-3 py-1.5 text-xs rounded-lg font-bold">영구삭제</button>
+                            </div>
                           </div>
                         </div>
+                      ))}
+                    </div>
+
+                    {totalPages > 1 && (
+                      <div className="flex justify-center items-center gap-2 mt-5">
+                        <button
+                          onClick={() => setResignedPage(Math.max(1, resignedPage - 1))}
+                          disabled={resignedPage === 1}
+                          className="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-600 disabled:opacity-50 font-bold text-xs hover:bg-slate-300 transition-colors"
+                        >
+                          이전
+                        </button>
+                        <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                          {resignedPage} / {totalPages}
+                        </span>
+                        <button
+                          onClick={() => setResignedPage(Math.min(totalPages, resignedPage + 1))}
+                          disabled={resignedPage === totalPages}
+                          className="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-600 disabled:opacity-50 font-bold text-xs hover:bg-slate-300 transition-colors"
+                        >
+                          다음
+                        </button>
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
