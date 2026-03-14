@@ -117,7 +117,7 @@ export default function LeaveManagement() {
     setMemo('');
   };
 
-  const handleKakaoShare = (leave: any) => {
+  const handleKakaoShare = async (leave: any) => {
     const st = leave.startDate || leave.date || "";
     const en = leave.endDate || leave.date || "";
     const dateDisp = (st === en) ? st : `${st} ~ ${en}`;
@@ -125,21 +125,25 @@ export default function LeaveManagement() {
     
     const message = `[휴가 보고]\n이름: ${currentUser?.name}\n기간: ${dateDisp}\n종류: ${typeName} (${leave.days}일)\n사유: ${leave.memo || '개인 사정'}`;
 
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // 혹시 앱이 안 열릴 경우를 대비해 클립보드에 먼저 복사
+    try {
+      await navigator.clipboard.writeText(message);
+    } catch (e) {
+      console.error("Clipboard copy failed", e);
+    }
+
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     
-    if (isMobile) {
+    if (isAndroid) {
+      // 안드로이드용 인텐트 스킴
+      window.location.href = `intent://send?text=${encodeURIComponent(message)}#Intent;scheme=kakaotalk;package=com.kakao.talk;end`;
+    } else if (isIOS) {
+      // iOS용 커스텀 스킴
       window.location.href = `kakaotalk://send?text=${encodeURIComponent(message)}`;
-      setTimeout(() => {
-        navigator.clipboard.writeText(message).then(() => {
-          // alert("카카오톡이 열리지 않을 경우를 대비해 클립보드에 복사되었습니다.");
-        }).catch(() => {});
-      }, 500);
     } else {
-      navigator.clipboard.writeText(message).then(() => {
-        alert("휴가 내용이 클립보드에 복사되었습니다. PC 카카오톡에 붙여넣기 해주세요.");
-      }).catch(() => {
-        alert("클립보드 복사에 실패했습니다.");
-      });
+      // PC 환경
+      alert("휴가 내용이 클립보드에 복사되었습니다. PC 카카오톡에 붙여넣기 해주세요.");
     }
   };
 
