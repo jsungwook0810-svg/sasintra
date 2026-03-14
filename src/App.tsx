@@ -70,19 +70,19 @@ export default function App() {
         <SeasonalEffects />
         <div className="max-w-[900px] mx-auto flex flex-col min-h-[calc(100vh-64px)] relative z-10">
           <header className="flex items-center justify-between p-2 pb-6 mb-4 border-b border-slate-200/50">
-            <div className="flex items-center gap-4">
-              <div className="w-[48px] h-[48px] bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-blue-500/30 relative">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-[42px] h-[42px] sm:w-[48px] sm:h-[48px] shrink-0 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl text-white flex items-center justify-center font-bold text-base sm:text-lg shadow-lg shadow-blue-500/30 relative">
                 SAS
-                <div className="absolute -top-1.5 -right-2.5 bg-emerald-500 text-white text-[0.65rem] px-2 py-0.5 rounded-full font-extrabold shadow-sm border border-white/20">
+                <div className="absolute -top-1.5 -right-2.5 bg-emerald-500 text-white text-[0.6rem] sm:text-[0.65rem] px-1.5 sm:px-2 py-0.5 rounded-full font-extrabold shadow-sm border border-white/20">
                   V1.0
                 </div>
               </div>
-              <h1 className="text-xl m-0 text-slate-800 font-extrabold tracking-tight">
+              <h1 className="text-lg sm:text-xl m-0 text-slate-800 font-extrabold tracking-tight">
                 SAS손해사정
-                <span className="text-indigo-500 text-xs block mt-1 font-semibold tracking-wide uppercase">업무포탈</span>
+                <span className="text-indigo-500 text-[10px] sm:text-xs block mt-0.5 sm:mt-1 font-semibold tracking-wide uppercase">업무포탈</span>
               </h1>
             </div>
-            <div className="text-sm font-bold text-slate-600 bg-white/60 px-3 py-1.5 rounded-xl shadow-sm border border-slate-200/50 backdrop-blur-md hidden sm:block">
+            <div className="text-[11px] sm:text-sm font-bold text-slate-600 bg-white/60 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl shadow-sm border border-slate-200/50 backdrop-blur-md whitespace-nowrap">
               {formattedDate}
             </div>
           </header>
