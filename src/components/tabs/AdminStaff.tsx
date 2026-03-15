@@ -224,7 +224,6 @@ export default function AdminStaff() {
             <select value={company} onChange={e => { setCompany(e.target.value); setRole(getRoles(e.target.value)[0]); }} className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none">
               <option value="삼성">삼성</option>
               <option value="마이브라운">마이브라운</option>
-              <option value="SAS">SAS</option>
             </select>
           </div>
           <div>
@@ -252,7 +251,7 @@ export default function AdminStaff() {
               <span className="text-xs font-bold text-slate-300 mb-1">전체</span>
               <span className="text-2xl font-extrabold text-white">{activeStaff.length}<span className="text-sm font-medium text-slate-400 ml-1">명</span></span>
             </div>
-            {['삼성', '마이브라운', 'SAS'].map(comp => {
+            {['삼성', '마이브라운'].map(comp => {
               const count = activeStaff.filter(u => u.company === comp).length;
               if (count === 0) return null;
               return (
@@ -440,7 +439,6 @@ export default function AdminStaff() {
               <select value={editCompany} onChange={e => { setEditCompany(e.target.value); setEditRole(getRoles(e.target.value)[0]); }} className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none">
                 <option value="삼성">삼성</option>
                 <option value="마이브라운">마이브라운</option>
-                <option value="SAS">SAS</option>
               </select>
             </div>
             <div className="mb-3">

@@ -1,257 +1,569 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
-import { getKSTMonth, getKSTToday, calculatePerformance, feeMap } from '@/lib/utils';
+import { getKSTMonth, getKSTToday, feeMap } from '@/lib/utils';
 
 export default function AdminReports() {
   const { globalStaffList, globalAllReports, globalActualRevenues } = useData();
-  const [subTab, setSubTab] = useState('stats');
-  const [month, setMonth] = useState(getKSTMonth());
-  const [liveDate, setLiveDate] = useState(getKSTToday());
-  const [selectedCompany, setSelectedCompany] = useState('삼성');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [periodType, setPeriodType] = useState<'day' | 'month' | 'year'>('day');
+  const [selectedDate, setSelectedDate] = useState(getKSTToday());
+  const [selectedMonth, setSelectedMonth] = useState(getKSTMonth());
+  const [selectedYear, setSelectedYear] = useState(getKSTMonth().split('-')[0]);
+  const [selectedCompany, setSelectedCompany] = useState('전체');
+
+  const [dailyPage, setDailyPage] = useState(1);
+  const [statsPage, setStatsPage] = useState(1);
   const itemsPerPage = 5;
 
-  const renderStats = () => {
-    let totalRev = 0, tRec = 0, tCom = 0, tPen = 0;
-    const itemSummary: Record<string, any> = {};
-    const userStatsHtml: any[] = [];
+  useEffect(() => {
+    setDailyPage(1);
+    setStatsPage(1);
+  }, [periodType, selectedDate, selectedMonth, selectedYear, selectedCompany]);
 
-    globalStaffList.filter(u => 
-      u.company === selectedCompany && 
-      (u.approved || globalAllReports.some(r => r.userId === u.userId && r.date.startsWith(month)))
-    ).forEach(u => {
-      const p = calculatePerformance(u.userId, month, globalStaffList, globalAllReports, globalActualRevenues);
-      if (p) {
-        totalRev += p.revenue;
-        
-        // Use itemBreakdown for totals instead of summing over reports
-        Object.keys(p.itemBreakdown).forEach(g => {
-          const d = p.itemBreakdown[g];
-          tRec += (d.rec || 0); tCom += (d.com || 0); tPen += (d.pen || 0);
+  const dailyStats = useMemo(() => {
+    if (periodType !== 'day') return null;
 
-          if (!itemSummary[g]) itemSummary[g] = { rec: 0, com: 0, pen: 0, rev: 0 };
-          itemSummary[g].rec += (d.rec || 0); itemSummary[g].com += (d.com || 0);
-          itemSummary[g].pen += (d.pen || 0); 
-          itemSummary[g].rev += (d.rev || 0);
-        });
+    const currentMonth = selectedDate.substring(0, 7);
+    const submitted: any[] = [];
+    const missing: any[] = [];
 
-        if (u.role !== '관리자' && p.reports.length > 0) {
-          let uRec = 0, uCom = 0, uPen = 0;
-          const details = Object.keys(p.itemBreakdown).map(k => {
-            const d = p.itemBreakdown[k];
-            if (d.rec > 0 || d.com > 0 || d.pen > 0) {
-              uRec += d.rec; uCom += d.com; uPen += d.pen;
-              return <div key={k} className="mt-1 pl-1.5">• {k} : 접수 {d.rec} / 종결 {d.com} / 미결 {d.pen}</div>;
-            }
-            return null;
-          });
+    const activeStaff = globalStaffList.filter(u => 
+      (selectedCompany === '전체' || u.company === selectedCompany) && u.role !== '관리자' && u.approved
+    );
 
-          userStatsHtml.push(
-            <div key={u.userId} className="bg-white p-4 rounded-xl border border-slate-200 border-l-[4px] border-l-blue-500 shadow-sm mb-3">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2.5">
-                <b className="text-base">{u.name} <small className="text-slate-500 font-normal">({u.company}/{u.role}/{u.rank})</small></b>
-                <span className="text-blue-500 font-black text-lg">{p.revenue.toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between mb-2.5 font-bold text-slate-800 bg-slate-50 p-2.5 rounded-lg text-center">
-                <div className="flex-1">접수<br /><span className="text-lg">{uRec}</span></div>
-                <div className="flex-1 text-emerald-500">종결<br /><span className="text-lg">{uCom}</span></div>
-                <div className="flex-1 text-red-500">미결<br /><span className="text-lg">{uPen}</span></div>
-              </div>
-              <div className="text-slate-600 text-xs leading-relaxed">{details}</div>
-            </div>
-          );
+    activeStaff.forEach(u => {
+      // Get all reports for this user up to the selected date
+      const allUserReports = globalAllReports.filter(r => r.userId === u.userId && r.date <= selectedDate);
+      allUserReports.sort((a, b) => b.date.localeCompare(a.date)); // Descending
+
+      const todayReport = allUserReports.find(r => r.date === selectedDate);
+      const prevReport = allUserReports.find(r => r.date < selectedDate);
+
+      if (!todayReport) {
+        missing.push(u);
+        return;
+      }
+
+      // Calculate today's values
+      let tRec = 0, tCom = 0, tPen = 0, tInvPen = 0;
+      for (let g in todayReport.data) {
+        const d = todayReport.data[g];
+        if (g === '조사미결') {
+          tInvPen += (d['미결'] || 0);
+        } else {
+          tRec += (d['접수'] || 0);
+          tCom += (d['종결'] || 0);
+          tPen += (d['미결'] || 0);
         }
       }
-    });
 
-    return (
-      <div className="space-y-4">
-        <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-t-[5px] border-blue-500">
-          <div className="mb-4">
-            <label className="block text-sm font-bold text-slate-600 mb-2">조회 월 선택</label>
-            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-sm bg-slate-50 focus:border-blue-500 focus:bg-white outline-none" />
-          </div>
-          <div className="bg-slate-100 mb-3 p-4 rounded-xl text-center border border-slate-200">
-            <span className="block font-extrabold text-2xl text-blue-500 leading-tight">{totalRev.toLocaleString()}원</span>
-            <span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">{selectedCompany} 합산 가매출액</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-slate-800">{tRec}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 접수</span></div>
-            <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-emerald-500">{tCom}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 종결</span></div>
-            <div className="bg-white p-3 rounded-xl text-center border border-slate-200"><span className="block font-extrabold text-lg text-red-500">{tPen}</span><span className="block text-[0.65rem] text-slate-500 mt-1 font-bold">총 미결</span></div>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
-          <h2 className="text-base m-0 mb-4 font-bold">📦 항목별 가매출 통계</h2>
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr>
-                  <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">항목</th>
-                  <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">접수</th>
-                  <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">종결</th>
-                  <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">미결</th>
-                  <th className="bg-slate-100 p-1.5 border-b border-slate-200 text-center text-slate-600 font-extrabold">매출</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.keys(itemSummary).map(it => {
-                  const s = itemSummary[it];
-                  if (s.rec > 0 || s.com > 0 || s.pen > 0) {
-                    return (
-                      <tr key={it}>
-                        <td className="text-left font-bold text-blue-500 pl-2 p-2 border-b border-slate-100">{it}</td>
-                        <td className="text-center p-2 border-b border-slate-100">{s.rec}</td>
-                        <td className="text-center p-2 border-b border-slate-100">{s.com}</td>
-                        <td className="text-center p-2 border-b border-slate-100">{s.pen}</td>
-                        <td className="text-center p-2 border-b border-slate-100 font-extrabold">{s.rev.toLocaleString()}원</td>
-                      </tr>
-                    );
-                  }
-                  return null;
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
-          <h2 className="text-base m-0 mb-4 font-bold">👥 직원별 월간 누적 성과</h2>
-          <div className="flex flex-col gap-3">
-            {userStatsHtml.length > 0 ? userStatsHtml : <p className="text-center p-2.5 text-slate-500 text-sm">해당 월에 제출된 마감보고가 없습니다.</p>}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderLive = () => {
-    const dailyReports = globalAllReports.filter(r => r.date === liveDate);
-    const submittedUids = dailyReports.map(r => r.userId);
-
-    const unreported: any[] = [];
-    const reported: any[] = [];
-
-    globalStaffList.filter(u => {
-      if (u.company !== selectedCompany || u.role === '관리자' || u.rank === '팀장') return false;
-      const hasReportedToday = globalAllReports.some(r => r.userId === u.userId && r.date === liveDate);
-      if (hasReportedToday) return true;
-      if (!u.approved) return false;
-      if (u.isResigned && u.resignDate && u.resignDate < liveDate) return false;
-      return true;
-    }).forEach(u => {
-      if (!submittedUids.includes(u.userId)) {
-        unreported.push(
-          <div key={u.userId} className="bg-white p-3 rounded-xl border border-slate-200 border-l-[4px] border-l-red-500 shadow-sm mb-2">
-            <b>{u.name}</b> <span className="text-xs text-slate-500">({u.company}/{u.role}/{u.rank})</span> - <b className="text-red-500 text-sm">미제출</b>
-          </div>
-        );
-      } else {
-        const rep = dailyReports.find(r => r.userId === u.userId);
-        if (!rep) return;
-        let dRev = 0;
-        const details = Object.keys(rep.data).map(k => {
-          const d = rep.data[k];
-          if (feeMap[k]) dRev += (d.종결 || 0) * feeMap[k];
-          if (d['접수'] || d['종결'] || d['미결']) {
-            return <div key={k} className="mt-1 pl-1.5">• {k} : 접수 {d['접수'] || 0} / 종결 {d['종결'] || 0} / 미결 {d['미결'] || 0}</div>;
+      // Calculate prev values
+      let pRec = 0, pCom = 0, pPen = 0, pInvPen = 0;
+      if (prevReport) {
+        for (let g in prevReport.data) {
+          const d = prevReport.data[g];
+          if (g === '조사미결') {
+            pInvPen += (d['미결'] || 0);
+          } else {
+            pRec += (d['접수'] || 0);
+            pCom += (d['종결'] || 0);
+            pPen += (d['미결'] || 0);
           }
-          return null;
-        });
-
-        reported.push(
-          <div key={u.userId} className="bg-white p-3 rounded-xl border border-slate-200 border-l-[4px] border-l-blue-500 shadow-sm mb-2 text-xs">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-1.5 mb-1.5">
-              <b className="text-sm">{u.name} <small className="text-slate-500 font-normal">({u.company}/{u.role}/{u.rank})</small></b>
-              <span className="text-blue-500 font-extrabold">+{dRev.toLocaleString()}원</span>
-            </div>
-            <div className="text-slate-600 leading-relaxed">{details}</div>
-            {rep.memo && <div className="mt-1.5 text-slate-500 italic">📝 {rep.memo}</div>}
-          </div>
-        );
+        }
       }
+
+      // Calculate accumulated for the month up to selectedDate
+      let accRec = 0, accCom = 0;
+      const monthReports = allUserReports.filter(r => r.date.startsWith(currentMonth));
+      monthReports.forEach(r => {
+        for (let g in r.data) {
+          if (g !== '조사미결') {
+            accRec += (r.data[g]['접수'] || 0);
+            accCom += (r.data[g]['종결'] || 0);
+          }
+        }
+      });
+
+      submitted.push({
+        ...u,
+        today: { rec: tRec, com: tCom, pen: tPen, invPen: tInvPen },
+        diff: {
+          rec: tRec - pRec,
+          com: tCom - pCom,
+          pen: tPen - pPen,
+          invPen: tInvPen - pInvPen
+        },
+        acc: { rec: accRec, com: accCom }
+      });
     });
 
-    const paginatedUnreported = unreported.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    submitted.sort((a, b) => b.today.com - a.today.com || b.today.rec - a.today.rec);
 
-    return (
-      <div className="space-y-4">
-        <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-t-[5px] border-amber-500">
-          <h2 className="text-base m-0 mb-2.5 font-bold">📅 조회 일자 선택</h2>
-          <input
-            type="date"
-            value={liveDate}
-            onChange={(e) => { setLiveDate(e.target.value); setCurrentPage(1); }}
-            className="w-full p-2.5 rounded-lg border border-slate-300 outline-none focus:border-blue-500"
-          />
-        </div>
-        <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-t-[5px] border-red-500">
-          <h2 className="text-base text-red-500 m-0 mb-2.5 font-bold">⚠️ {selectedCompany} 마감보고 미제출자</h2>
-          <div className="flex flex-col">
-            {paginatedUnreported.length > 0 ? paginatedUnreported : <p className="text-center text-sm text-slate-500">미제출자가 없습니다.</p>}
-          </div>
-          {unreported.length > itemsPerPage && (
-            <div className="flex justify-center gap-2 mt-4">
-              <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-50 bg-white shadow-sm"
-              >
-                이전
-              </button>
-              <span className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl shadow-sm">
-                {currentPage} / {Math.ceil(unreported.length / itemsPerPage)}
-              </span>
-              <button 
-                onClick={() => setCurrentPage(p => Math.min(Math.ceil(unreported.length / itemsPerPage), p + 1))}
-                disabled={currentPage === Math.ceil(unreported.length / itemsPerPage)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-50 bg-white shadow-sm"
-              >
-                다음
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
-          <h2 className="text-lg m-0 mb-3 font-bold">👥 {selectedCompany} 직원별 보고 현황</h2>
-          <div className="flex flex-col">
-            {reported.length > 0 ? reported : <p className="text-center text-sm text-slate-500">제출된 보고가 없습니다.</p>}
-          </div>
-        </div>
-      </div>
-    );
-  };
+    return { submitted, missing };
+  }, [periodType, selectedDate, selectedCompany, globalStaffList, globalAllReports]);
+
+  const stats = useMemo(() => {
+    if (periodType === 'day') return null;
+    
+    const prefix = periodType === 'month' ? selectedMonth : selectedYear;
+    
+    let totalEstimated = 0;
+    let totalConfirmed = 0;
+    let totalRec = 0;
+    let totalCom = 0;
+    let totalPen = 0;
+    let totalInvPen = 0;
+
+    const staffStats = globalStaffList.filter(u => 
+      (selectedCompany === '전체' || u.company === selectedCompany) && u.role !== '관리자'
+    ).map(u => {
+      const reports = globalAllReports.filter(r => r.userId === u.userId && r.date.startsWith(prefix));
+      const sortedReports = [...reports].sort((a, b) => a.date.localeCompare(b.date));
+      
+      let uRec = 0;
+      let uCom = 0;
+      let uPen = 0;
+      let uInvPen = 0;
+      let uEstRev = 0;
+      
+      const latestPending: Record<string, number> = {};
+      
+      sortedReports.forEach(r => {
+        for (let g in r.data) {
+          const d = r.data[g];
+          if (g === '조사미결') {
+            if (d['미결'] !== undefined) latestPending[g] = d['미결'];
+          } else {
+            uRec += (d['접수'] || 0);
+            uCom += (d['종결'] || 0);
+            if (d['미결'] !== undefined) latestPending[g] = d['미결'];
+            if (feeMap[g]) uEstRev += (d['종결'] || 0) * feeMap[g];
+          }
+        }
+      });
+
+      uPen = Object.keys(latestPending).filter(k => k !== '조사미결').reduce((sum, k) => sum + latestPending[k], 0);
+      uInvPen = latestPending['조사미결'] || 0;
+
+      let uConfRev = 0;
+      let hasConfRev = false;
+      if (periodType === 'month') {
+        const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === selectedMonth);
+        if (act) {
+          uConfRev = act.amount;
+          hasConfRev = true;
+        }
+      } else {
+        const acts = globalActualRevenues.filter(ar => ar.userId === u.userId && ar.month.startsWith(selectedYear));
+        if (acts.length > 0) {
+          uConfRev = acts.reduce((sum, ar) => sum + ar.amount, 0);
+          hasConfRev = true;
+        }
+      }
+
+      totalEstimated += uEstRev;
+      totalConfirmed += uConfRev;
+      totalRec += uRec;
+      totalCom += uCom;
+      totalPen += uPen;
+      totalInvPen += uInvPen;
+
+      // Determine active months for average calculation in year view
+      const activeMonths = new Set(reports.map(r => r.date.substring(0, 7))).size || 1;
+      const activeDays = new Set(reports.map(r => r.date)).size || 1;
+
+      return {
+        ...u,
+        rec: uRec,
+        com: uCom,
+        pen: uPen,
+        invPen: uInvPen,
+        estRev: uEstRev,
+        confRev: uConfRev,
+        hasConfRev,
+        diff: uConfRev - uEstRev,
+        activeMonths,
+        activeDays,
+        hasData: uRec > 0 || uCom > 0 || uPen > 0 || uInvPen > 0 || uConfRev > 0
+      };
+    }).filter(s => s.hasData || s.approved);
+
+    staffStats.sort((a, b) => {
+      const valA = a.hasConfRev ? a.confRev : a.estRev;
+      const valB = b.hasConfRev ? b.confRev : b.estRev;
+      return valB - valA || b.estRev - a.estRev;
+    });
+
+    return {
+      totalEstimated,
+      totalConfirmed,
+      totalRec,
+      totalCom,
+      totalPen,
+      totalInvPen,
+      staffStats
+    };
+  }, [periodType, selectedMonth, selectedYear, selectedCompany, globalStaffList, globalAllReports, globalActualRevenues]);
 
   return (
-    <div>
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4 flex items-center justify-between">
-        <label className="font-bold text-slate-700 mr-4">🏢 보험사 선택</label>
-        <select 
-          value={selectedCompany} 
-          onChange={(e) => setSelectedCompany(e.target.value)} 
-          className="flex-1 p-2 border border-slate-300 rounded-lg text-sm focus:border-indigo-500 outline-none font-medium"
-        >
-          <option value="삼성">삼성</option>
-          <option value="마이브라운">마이브라운</option>
-        </select>
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+        <h2 className="text-xl text-slate-800 m-0 mb-6 font-extrabold tracking-tight flex items-center gap-2">
+          <span className="text-2xl">📊</span> 통합 통계 <span className="text-sm font-medium text-slate-400 font-normal ml-2">(마감/매출)</span>
+        </h2>
+
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <label className="block text-sm font-bold text-slate-600 mb-2">조회 기준</label>
+            <div className="flex bg-slate-100 p-1 rounded-2xl">
+              <button
+                onClick={() => setPeriodType('day')}
+                className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${periodType === 'day' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                일별 보기
+              </button>
+              <button
+                onClick={() => setPeriodType('month')}
+                className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${periodType === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                월별 보기
+              </button>
+              <button
+                onClick={() => setPeriodType('year')}
+                className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${periodType === 'year' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                연도별 보기
+              </button>
+            </div>
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-bold text-slate-600 mb-2">
+              {periodType === 'day' ? '📅 조회 일자 선택' : periodType === 'month' ? '📅 조회 월 선택' : '📅 조회 연도 선택'}
+            </label>
+            {periodType === 'day' ? (
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full p-3 border border-slate-200/80 rounded-2xl text-sm bg-white/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium"
+              />
+            ) : periodType === 'month' ? (
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full p-3 border border-slate-200/80 rounded-2xl text-sm bg-white/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium"
+              />
+            ) : (
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="w-full p-3 border border-slate-200/80 rounded-2xl text-sm bg-white/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium"
+              >
+                {[...Array(5)].map((_, i) => {
+                  const y = String(new Date().getFullYear() - i);
+                  return <option key={y} value={y}>{y}년</option>;
+                })}
+              </select>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-slate-600 mb-2">🏢 소속 필터</label>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {['전체', '삼성', '마이브라운'].map(c => (
+              <button
+                key={c}
+                onClick={() => setSelectedCompany(c)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${selectedCompany === c ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <nav className="flex bg-slate-100 rounded-xl p-1 mb-4">
-        <div
-          onClick={() => setSubTab('stats')}
-          className={`flex-1 p-2.5 text-sm font-bold text-center rounded-lg cursor-pointer transition-all ${subTab === 'stats' ? 'bg-white text-blue-500 shadow-sm' : 'text-slate-500'}`}
-        >
-          📊 통합성과
+      {/* Conditional Rendering based on periodType */}
+      {periodType === 'day' && dailyStats ? (
+        <div className="space-y-6">
+          {/* Missing Reporters */}
+          {dailyStats.missing.length > 0 && (
+            <div className="bg-rose-50/80 backdrop-blur-sm p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-rose-100 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-400"></div>
+              <h3 className="text-sm font-bold text-rose-600 mb-4 flex items-center gap-2">
+                <span className="animate-pulse">⚠️</span> 마감보고 미제출자 ({dailyStats.missing.length}명)
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {dailyStats.missing.map(u => (
+                  <span key={u.userId} className="bg-white text-rose-500 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-rose-100">
+                    {u.name} <span className="text-rose-300 font-normal">({u.company})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Submitted Reporters */}
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-800 mb-4 px-2 flex items-center gap-2">
+              <span>✅</span> 마감보고 제출자 ({dailyStats.submitted.length}명)
+            </h3>
+            <div className="space-y-4">
+              {dailyStats.submitted.length === 0 ? (
+                <div className="text-center py-10 bg-white/50 rounded-3xl border border-slate-200 border-dashed">
+                  <p className="text-slate-500 font-medium">제출된 보고가 없습니다.</p>
+                </div>
+              ) : (
+                <>
+                  {dailyStats.submitted.slice((dailyPage - 1) * itemsPerPage, dailyPage * itemsPerPage).map((staff, idx) => (
+                    <div key={staff.userId} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400"></div>
+                    
+                    <div className="flex justify-between items-start mb-4 pl-2">
+                      <div>
+                        <h4 className="text-base font-extrabold text-slate-800">{staff.name}</h4>
+                        <div className="text-xs font-medium text-slate-400">{staff.company} / {staff.role} / {staff.rank}</div>
+                      </div>
+                      
+                      <div className="text-right bg-emerald-50 px-3 py-2 rounded-xl">
+                        <div className="text-[10px] font-bold text-emerald-500 mb-1">월 누적 (접수/종결)</div>
+                        <div className="text-xs font-bold text-emerald-700">
+                          {staff.acc.rec}건 / {staff.acc.com}건
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pl-2">
+                      <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">오늘 보고 내역 (전일 대비)</div>
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div>
+                            <div className="text-[10px] text-slate-500 mb-0.5">접수</div>
+                            <div className="text-sm font-bold text-slate-700">{staff.today.rec}</div>
+                            <div className={`text-[10px] font-bold mt-0.5 ${staff.diff.rec > 0 ? 'text-blue-500' : staff.diff.rec < 0 ? 'text-rose-500' : 'text-slate-300'}`}>
+                              {staff.diff.rec > 0 ? '▲' : staff.diff.rec < 0 ? '▼' : '-'} {Math.abs(staff.diff.rec)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-blue-500 mb-0.5">종결</div>
+                            <div className="text-sm font-bold text-blue-600">{staff.today.com}</div>
+                            <div className={`text-[10px] font-bold mt-0.5 ${staff.diff.com > 0 ? 'text-blue-500' : staff.diff.com < 0 ? 'text-rose-500' : 'text-slate-300'}`}>
+                              {staff.diff.com > 0 ? '▲' : staff.diff.com < 0 ? '▼' : '-'} {Math.abs(staff.diff.com)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-amber-500 mb-0.5">현재 미결</div>
+                            <div className="text-sm font-bold text-amber-600">{staff.today.pen}</div>
+                            <div className={`text-[10px] font-bold mt-0.5 ${staff.diff.pen > 0 ? 'text-rose-500' : staff.diff.pen < 0 ? 'text-blue-500' : 'text-slate-300'}`}>
+                              {staff.diff.pen > 0 ? '▲' : staff.diff.pen < 0 ? '▼' : '-'} {Math.abs(staff.diff.pen)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-rose-500 mb-0.5">조사미결</div>
+                            <div className="text-sm font-bold text-rose-600">{staff.today.invPen}</div>
+                            <div className={`text-[10px] font-bold mt-0.5 ${staff.diff.invPen > 0 ? 'text-rose-500' : staff.diff.invPen < 0 ? 'text-blue-500' : 'text-slate-300'}`}>
+                              {staff.diff.invPen > 0 ? '▲' : staff.diff.invPen < 0 ? '▼' : '-'} {Math.abs(staff.diff.invPen)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  ))}
+                  {Math.ceil(dailyStats.submitted.length / itemsPerPage) > 1 && (
+                    <div className="flex justify-center items-center gap-4 mt-6">
+                      <button
+                        onClick={() => setDailyPage(p => Math.max(1, p - 1))}
+                        disabled={dailyPage === 1}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm font-bold disabled:opacity-50 transition-all hover:bg-slate-50 active:scale-95"
+                      >
+                        이전
+                      </button>
+                      <span className="text-sm font-bold text-slate-500">
+                        {dailyPage} / {Math.ceil(dailyStats.submitted.length / itemsPerPage)}
+                      </span>
+                      <button
+                        onClick={() => setDailyPage(p => Math.min(Math.ceil(dailyStats.submitted.length / itemsPerPage), p + 1))}
+                        disabled={dailyPage === Math.ceil(dailyStats.submitted.length / itemsPerPage)}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm font-bold disabled:opacity-50 transition-all hover:bg-slate-50 active:scale-95"
+                      >
+                        다음
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
-        <div
-          onClick={() => setSubTab('live')}
-          className={`flex-1 p-2.5 text-sm font-bold text-center rounded-lg cursor-pointer transition-all ${subTab === 'live' ? 'bg-white text-blue-500 shadow-sm' : 'text-slate-500'}`}
-        >
-          📋 업무현황
-        </div>
-      </nav>
-      {subTab === 'stats' ? renderStats() : renderLive()}
+      ) : stats ? (
+        <>
+          {/* Overall Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-400"></div>
+              <h3 className="text-sm font-bold text-slate-500 mb-4">업무 흐름 요약 (마감보고 기준)</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-slate-400 mb-1">총 접수</div>
+                  <div className="text-2xl font-extrabold text-slate-800">{stats.totalRec.toLocaleString()}<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400 mb-1">총 종결</div>
+                  <div className="text-2xl font-extrabold text-blue-600">{stats.totalCom.toLocaleString()}<span className="text-sm font-normal text-blue-400 ml-1">건</span></div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400 mb-1">현재 미결</div>
+                  <div className="text-xl font-bold text-amber-500">{stats.totalPen.toLocaleString()}<span className="text-sm font-normal text-amber-400 ml-1">건</span></div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400 mb-1">현재 조사미결</div>
+                  <div className="text-xl font-bold text-rose-500">{stats.totalInvPen.toLocaleString()}<span className="text-sm font-normal text-rose-400 ml-1">건</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-400"></div>
+              <h3 className="text-sm font-bold text-slate-500 mb-4">매출 요약</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-end border-b border-slate-100 pb-2">
+                  <div className="text-xs font-bold text-slate-500">보고 가매출 (마감기준)</div>
+                  <div className="text-lg font-bold text-slate-700">{stats.totalEstimated.toLocaleString()}원</div>
+                </div>
+                <div className="flex justify-between items-end border-b border-slate-100 pb-2">
+                  <div className="text-xs font-bold text-emerald-600">최종 확정매출 (입력기준)</div>
+                  <div className="text-2xl font-extrabold text-emerald-600">{stats.totalConfirmed.toLocaleString()}원</div>
+                </div>
+                <div className="flex justify-between items-end">
+                  <div className="text-xs font-bold text-slate-400">차액 (확정 - 가매출)</div>
+                  <div className={`text-sm font-bold ${stats.totalConfirmed - stats.totalEstimated >= 0 ? 'text-blue-500' : 'text-rose-500'}`}>
+                    {(stats.totalConfirmed - stats.totalEstimated) > 0 ? '+' : ''}{(stats.totalConfirmed - stats.totalEstimated).toLocaleString()}원
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Employee Details */}
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-800 mb-4 px-2 flex items-center gap-2">
+              <span>👥</span> 직원별 상세 통계
+            </h3>
+            <div className="space-y-4">
+              {stats.staffStats.length === 0 ? (
+                <div className="text-center py-10 bg-white/50 rounded-3xl border border-slate-200 border-dashed">
+                  <p className="text-slate-500 font-medium">해당 기간에 데이터가 없습니다.</p>
+                </div>
+              ) : (
+                <>
+                  {stats.staffStats.slice((statsPage - 1) * itemsPerPage, statsPage * itemsPerPage).map((staff, idx) => (
+                    <div key={staff.userId} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
+                      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-400"></div>
+                      
+                      <div className="flex justify-between items-start mb-4 pl-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{(statsPage - 1) * itemsPerPage + idx + 1}위</span>
+                            <h4 className="text-base font-extrabold text-slate-800">{staff.name}</h4>
+                        </div>
+                        <div className="text-xs font-medium text-slate-400">{staff.company} / {staff.role} / {staff.rank}</div>
+                      </div>
+                      
+                      {periodType === 'year' ? (
+                        <div className="text-right bg-indigo-50 px-3 py-2 rounded-xl">
+                          <div className="text-[10px] font-bold text-indigo-400 mb-1">월 평균 (활동 {staff.activeMonths}개월)</div>
+                          <div className="text-xs font-bold text-indigo-700">
+                            접수 {Math.round(staff.rec / staff.activeMonths)}건 / 종결 {Math.round(staff.com / staff.activeMonths)}건
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-right bg-emerald-50 px-3 py-2 rounded-xl">
+                          <div className="text-[10px] font-bold text-emerald-500 mb-1">일 평균 (보고 {staff.activeDays}일)</div>
+                          <div className="text-xs font-bold text-emerald-700">
+                            접수 {(staff.rec / staff.activeDays).toFixed(1)}건 / 종결 {(staff.com / staff.activeDays).toFixed(1)}건
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-2">
+                      {/* 업무 흐름 */}
+                      <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">업무 흐름 (건수)</div>
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div>
+                            <div className="text-[10px] text-slate-500 mb-0.5">접수</div>
+                            <div className="text-sm font-bold text-slate-700">{staff.rec}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-blue-500 mb-0.5">종결</div>
+                            <div className="text-sm font-bold text-blue-600">{staff.com}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-amber-500 mb-0.5">미결</div>
+                            <div className="text-sm font-bold text-amber-600">{staff.pen}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-rose-500 mb-0.5">조사미결</div>
+                            <div className="text-sm font-bold text-rose-600">{staff.invPen}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 매출 비교 */}
+                      <div className="bg-emerald-50/50 p-3 rounded-2xl border border-emerald-100">
+                        <div className="text-[10px] font-bold text-emerald-600 mb-2 uppercase tracking-wider">매출 비교 (원)</div>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-medium text-slate-500">보고(가매출)</span>
+                            <span className="text-xs font-bold text-slate-700">{staff.estRev.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-emerald-700">확정매출</span>
+                            <span className="text-sm font-extrabold text-emerald-600">{staff.confRev.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-1 border-t border-emerald-100/50">
+                            <span className="text-[10px] font-medium text-slate-400">차액</span>
+                            <span className={`text-xs font-bold ${staff.diff >= 0 ? 'text-blue-500' : 'text-rose-500'}`}>
+                              {staff.diff > 0 ? '+' : ''}{staff.diff.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  ))}
+                  {Math.ceil(stats.staffStats.length / itemsPerPage) > 1 && (
+                    <div className="flex justify-center items-center gap-4 mt-6">
+                      <button
+                        onClick={() => setStatsPage(p => Math.max(1, p - 1))}
+                        disabled={statsPage === 1}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm font-bold disabled:opacity-50 transition-all hover:bg-slate-50 active:scale-95"
+                      >
+                        이전
+                      </button>
+                      <span className="text-sm font-bold text-slate-500">
+                        {statsPage} / {Math.ceil(stats.staffStats.length / itemsPerPage)}
+                      </span>
+                      <button
+                        onClick={() => setStatsPage(p => Math.min(Math.ceil(stats.staffStats.length / itemsPerPage), p + 1))}
+                        disabled={statsPage === Math.ceil(stats.staffStats.length / itemsPerPage)}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm font-bold disabled:opacity-50 transition-all hover:bg-slate-50 active:scale-95"
+                      >
+                        다음
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

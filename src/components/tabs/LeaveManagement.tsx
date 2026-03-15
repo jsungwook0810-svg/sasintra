@@ -125,26 +125,24 @@ export default function LeaveManagement() {
     
     const message = `[휴가 보고]\n이름: ${currentUser?.name}\n기간: ${dateDisp}\n종류: ${typeName} (${leave.days}일)\n사유: ${leave.memo || '개인 사정'}`;
 
-    // 1. 모바일 표준 공유 기능 (Web Share API) 사용
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: '휴가 보고',
-          text: message,
-        });
-        return; // 공유 성공 시 종료
-      } catch (e) {
-        console.log("공유가 취소되었거나 지원하지 않는 환경입니다.", e);
-      }
-    }
+    const isAndroid = /android/i.test(navigator.userAgent);
+    const isIOS = /ipad|iphone|ipod/i.test(navigator.userAgent);
 
-    // 2. Web Share API를 지원하지 않는 환경(PC 등)이거나 취소된 경우 클립보드 복사
-    try {
-      await navigator.clipboard.writeText(message);
-      alert("휴가 내용이 클립보드에 복사되었습니다.\nPC 카카오톡이나 메신저에 붙여넣기 해주세요.");
-    } catch (e) {
-      console.error("Clipboard copy failed", e);
-      alert("클립보드 복사에 실패했습니다.");
+    if (isAndroid) {
+      // 안드로이드 카카오톡 딥링크 (인텐트)
+      window.location.href = `intent://send?text=${encodeURIComponent(message)}#Intent;scheme=kakaotalk;package=com.kakao.talk;end`;
+    } else if (isIOS) {
+      // iOS 카카오톡 딥링크
+      window.location.href = `kakaotalk://send?text=${encodeURIComponent(message)}`;
+    } else {
+      // PC 및 기타 환경: 클립보드 복사
+      try {
+        await navigator.clipboard.writeText(message);
+        alert("휴가 내용이 클립보드에 복사되었습니다.\nPC 카카오톡이나 메신저에 붙여넣기 해주세요.");
+      } catch (e) {
+        console.error("Clipboard copy failed", e);
+        alert("클립보드 복사에 실패했습니다.");
+      }
     }
   };
 

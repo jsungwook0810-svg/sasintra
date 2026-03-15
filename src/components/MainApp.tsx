@@ -26,8 +26,8 @@ export default function MainApp() {
   
   const tabs = isAdmin
     ? [
-        { id: 'adminViewSettlement', label: '💰 매출관리(관리자용)' },
-        { id: 'adminReportWrapper', label: '📝 마감보고(관리자용)' },
+        { id: 'adminReportWrapper', label: '📊 통합 통계' },
+        { id: 'adminViewSettlement', label: '💰 확정매출 입력' },
         ...(isJungSungWook ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : []),
         { id: 'adminCorpCard', label: '💳 법인카드관리' },
         { id: 'subViewLeave', label: '🌴 휴가관리' },

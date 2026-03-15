@@ -68,6 +68,7 @@ export default function Login() {
               placeholder="아이디"
               value={id}
               onChange={(e) => setId(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
               className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm bg-white/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all placeholder:text-slate-400 font-medium"
             />
             <input
@@ -75,6 +76,7 @@ export default function Login() {
               placeholder="비밀번호"
               value={pw}
               onChange={(e) => setPw(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
               className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm bg-white/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all placeholder:text-slate-400 font-medium"
             />
           </div>
