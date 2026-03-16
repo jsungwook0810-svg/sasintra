@@ -97,6 +97,34 @@ export function calculateAnnualLeave(jStr: string, targetYear?: number) {
   return Math.ceil(totalLeave * 2) / 2;
 }
 
+export function getReportCompany(report: any, staff: any) {
+  if (report?.company) return report.company;
+  
+  const keys = Object.keys(report?.data || {});
+  if (keys.includes("골프용품") || keys.includes("가전제품") || keys.includes("홀인원") || keys.includes("시설소유관리자") || keys.includes("300만원 초과")) {
+    return "삼성";
+  }
+  if (keys.length > 0 && keys.every(k => k === "펫보험" || k === "조사미결")) {
+    return "마이브라운";
+  }
+  
+  return staff?.company || "전체";
+}
+
+export function getReportRole(report: any, staff: any) {
+  if (report?.role) return report.role;
+  
+  const keys = Object.keys(report?.data || {});
+  if (keys.includes("시설소유관리자")) return "누수팀";
+  if (keys.includes("골프용품") && !keys.includes("시설소유관리자")) return "재물팀";
+  if (keys.includes("펫보험") && !keys.includes("골프용품") && keys.length <= 2) {
+    if (staff?.role === "재물심사" || staff?.role === "재물팀") return staff.role;
+    return "재물심사";
+  }
+  
+  return staff?.role || "기본 업무";
+}
+
 export function calculatePerformance(uid: string, month: string, globalStaffList: any[], globalAllReports: any[], globalActualRevenues: any[]) {
   const staff = globalStaffList.find(s => s.userId === uid);
   if (!staff) return null;

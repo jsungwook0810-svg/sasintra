@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { getKSTToday, getKSTMonth, feeMap, reportStructure } from '@/lib/utils';
+import { getKSTToday, getKSTMonth, feeMap, reportStructure, getReportCompany, getReportRole } from '@/lib/utils';
 import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
 
@@ -75,11 +75,24 @@ export default function EmployeeReport() {
       if (isDuplicate) return alert("이미 마감보고를 하였습니다!");
     }
 
+    let reportCompany = currentUser?.company || "전체";
+    let reportRole = currentUser?.role || "기본 업무";
+
+    if (editingId) {
+      const existingReport = allUserReports.find(r => r.id === editingId);
+      if (existingReport) {
+        reportCompany = getReportCompany(existingReport, currentUser);
+        reportRole = getReportRole(existingReport, currentUser);
+      }
+    }
+
     const data = {
       userId: currentUser?.userId,
       date: reportDate,
       data: formData,
       memo,
+      company: reportCompany,
+      role: reportRole,
       updatedAt: Date.now()
     };
 
@@ -102,7 +115,10 @@ export default function EmployeeReport() {
     setMemo(r.memo || "");
     
     const editData: Record<string, Record<string, number>> = {};
-    groups.forEach(g => {
+    // Use only the keys from the existing report data
+    const reportGroups = Object.keys(r.data);
+    
+    reportGroups.forEach(g => {
       editData[g] = {
         "접수": r.data[g]?.["접수"] || 0,
         "종결": r.data[g]?.["종결"] || 0,
@@ -202,7 +218,7 @@ export default function EmployeeReport() {
         </div>
 
         <div className="space-y-6">
-          {groups.map(gName => (
+          {Object.keys(formData).map(gName => (
             <div key={gName} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
               <div className="flex justify-between items-center border-b border-slate-200/60 pb-3 mb-4">
                 <span className="text-indigo-600 font-extrabold text-base tracking-tight">{gName}</span>

@@ -40,6 +40,7 @@ export default function Notices() {
         [{ 'size': ['small', false, 'large', 'huge'] }],
         ['bold', 'italic', 'underline', 'strike'],
         [{ 'color': [] }, { 'background': [] }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
         [{ 'align': [] }],
         ['clean']
       ]
@@ -145,7 +146,7 @@ export default function Notices() {
               {n.isPinned && (
                 <span className="bg-indigo-100 text-indigo-600 text-[0.65rem] font-black px-2 py-0.5 rounded-md tracking-tight">상단고정</span>
               )}
-              <div className="font-bold text-lg text-slate-800 group-hover:text-indigo-600 transition-colors">{n.title}</div>
+              <div className="font-bold text-lg text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap">{n.title}</div>
             </div>
             <div className="text-sm text-slate-500 mt-2.5 flex items-center gap-3">
               <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold">{n.author}</span>
@@ -256,37 +257,37 @@ export default function Notices() {
             {selectedNotice.isPinned && (
               <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500"></div>
             )}
-            <div className="flex items-center gap-3 mb-4 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 shrink-0">
               {selectedNotice.isPinned && (
-                <span className="bg-indigo-100 text-indigo-600 text-xs font-black px-3 py-1 rounded-lg tracking-tight">📌 상단고정</span>
+                <span className="bg-indigo-100 text-indigo-600 text-xs font-black px-3 py-1.5 rounded-lg tracking-tight shrink-0 whitespace-nowrap self-start sm:self-auto">📌 상단고정</span>
               )}
-              <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight leading-tight">{selectedNotice.title}</h3>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight leading-tight break-words">{selectedNotice.title}</h3>
             </div>
-            <div className="text-sm text-slate-500 mb-8 flex items-center gap-3 pb-6 border-b border-slate-100 shrink-0">
-              <span className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold">{selectedNotice.author}</span>
-              <span className="text-slate-400 font-medium">{new Date(selectedNotice.createdAt).toLocaleString()}</span>
-              {selectedNotice.updatedAt && <span className="text-xs text-indigo-400 font-bold">(수정됨)</span>}
+            <div className="text-sm text-slate-500 mb-6 sm:mb-8 flex flex-wrap items-center gap-2 sm:gap-3 pb-4 sm:pb-6 border-b border-slate-100 shrink-0">
+              <span className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold shrink-0">{selectedNotice.author}</span>
+              <span className="text-slate-400 font-medium text-xs sm:text-sm">{new Date(selectedNotice.createdAt).toLocaleString()}</span>
+              {selectedNotice.updatedAt && <span className="text-xs text-indigo-400 font-bold shrink-0">(수정됨)</span>}
             </div>
             
-            <div className="ql-snow mb-10 flex-1 overflow-y-auto">
+            <div className="ql-snow mb-8 sm:mb-10 flex-1 overflow-y-auto">
               <div 
-                className="ql-editor p-0 min-h-[200px] text-slate-700 leading-relaxed text-[1.05rem]"
+                className="ql-editor p-0 min-h-[200px] text-slate-700 leading-relaxed text-base sm:text-[1.05rem] break-words whitespace-pre-wrap [&_p]:mb-2 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mb-3 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:ml-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:ml-5 [&_ol]:mb-4"
                 dangerouslySetInnerHTML={{ __html: selectedNotice.content }}
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 shrink-0">
+            <div className="flex flex-wrap justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 border-t border-slate-100 shrink-0">
               {currentUser?.role === '관리자' && (
                 <>
                   <button 
                     onClick={handleEditClick} 
-                    className="px-6 py-3 bg-indigo-50 text-indigo-600 font-bold rounded-2xl hover:bg-indigo-100 transition-colors"
+                    className="flex-1 sm:flex-none px-6 py-3 bg-indigo-50 text-indigo-600 font-bold rounded-2xl hover:bg-indigo-100 transition-colors"
                   >
                     수정
                   </button>
                   <button 
                     onClick={() => handleDelete(selectedNotice.id)} 
-                    className="px-6 py-3 bg-rose-50 text-rose-600 font-bold rounded-2xl hover:bg-rose-100 transition-colors"
+                    className="flex-1 sm:flex-none px-6 py-3 bg-rose-50 text-rose-600 font-bold rounded-2xl hover:bg-rose-100 transition-colors"
                   >
                     삭제
                   </button>
@@ -294,7 +295,7 @@ export default function Notices() {
               )}
               <button 
                 onClick={() => setSelectedNotice(null)} 
-                className="px-6 py-3 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10 active:scale-[0.98]"
+                className="flex-1 sm:flex-none px-6 py-3 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10 active:scale-[0.98]"
               >
                 닫기
               </button>

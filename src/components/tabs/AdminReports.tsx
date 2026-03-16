@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
-import { getKSTMonth, getKSTToday, feeMap } from '@/lib/utils';
+import { getKSTMonth, getKSTToday, feeMap, getReportCompany } from '@/lib/utils';
 
 export default function AdminReports() {
   const { globalStaffList, globalAllReports, globalActualRevenues } = useData();
@@ -26,11 +26,9 @@ export default function AdminReports() {
     const submitted: any[] = [];
     const missing: any[] = [];
 
-    const activeStaff = globalStaffList.filter(u => 
-      (selectedCompany === '전체' || u.company === selectedCompany) && u.role !== '관리자' && u.approved
-    );
+    globalStaffList.forEach(u => {
+      if (u.role === '관리자' || !u.approved) return;
 
-    activeStaff.forEach(u => {
       // Get all reports for this user up to the selected date
       const allUserReports = globalAllReports.filter(r => r.userId === u.userId && r.date <= selectedDate);
       allUserReports.sort((a, b) => b.date.localeCompare(a.date)); // Descending
@@ -38,8 +36,19 @@ export default function AdminReports() {
       const todayReport = allUserReports.find(r => r.date === selectedDate);
       const prevReport = allUserReports.find(r => r.date < selectedDate);
 
+      // Determine user's company on selectedDate
+      let inferredCompany = u.company;
+      if (todayReport) {
+        inferredCompany = getReportCompany(todayReport, u);
+      } else if (prevReport) {
+        inferredCompany = getReportCompany(prevReport, u);
+      }
+
+      // Filter by selected company
+      if (selectedCompany !== '전체' && inferredCompany !== selectedCompany) return;
+
       if (!todayReport) {
-        missing.push(u);
+        missing.push({ ...u, company: inferredCompany });
         return;
       }
 
@@ -71,10 +80,11 @@ export default function AdminReports() {
         }
       }
 
-      // Calculate accumulated for the month up to selectedDate
+      // Calculate accumulated for the month up to selectedDate (only for the inferred company)
       let accRec = 0, accCom = 0;
       const monthReports = allUserReports.filter(r => r.date.startsWith(currentMonth));
       monthReports.forEach(r => {
+        if (getReportCompany(r, u) !== inferredCompany) return;
         for (let g in r.data) {
           if (g !== '조사미결') {
             accRec += (r.data[g]['접수'] || 0);
@@ -85,6 +95,7 @@ export default function AdminReports() {
 
       submitted.push({
         ...u,
+        company: inferredCompany,
         today: { rec: tRec, com: tCom, pen: tPen, invPen: tInvPen },
         diff: {
           rec: tRec - pRec,
@@ -113,10 +124,15 @@ export default function AdminReports() {
     let totalPen = 0;
     let totalInvPen = 0;
 
-    const staffStats = globalStaffList.filter(u => 
-      (selectedCompany === '전체' || u.company === selectedCompany) && u.role !== '관리자'
-    ).map(u => {
-      const reports = globalAllReports.filter(r => r.userId === u.userId && r.date.startsWith(prefix));
+    const staffStats = globalStaffList.filter(u => u.role !== '관리자').map(u => {
+      const allPrefixReports = globalAllReports.filter(r => r.userId === u.userId && r.date.startsWith(prefix));
+      
+      // Filter reports by selectedCompany
+      const reports = allPrefixReports.filter(r => {
+        if (selectedCompany === '전체') return true;
+        return getReportCompany(r, u) === selectedCompany;
+      });
+
       const sortedReports = [...reports].sort((a, b) => a.date.localeCompare(b.date));
       
       let uRec = 0;
@@ -124,8 +140,16 @@ export default function AdminReports() {
       let uPen = 0;
       let uInvPen = 0;
       let uEstRev = 0;
+      let totalUserEstRev = 0;
       
       const latestPending: Record<string, number> = {};
+      
+      // Calculate total est rev across all companies for pro-rating
+      allPrefixReports.forEach(r => {
+        for (let g in r.data) {
+          if (feeMap[g]) totalUserEstRev += (r.data[g]['종결'] || 0) * feeMap[g];
+        }
+      });
       
       sortedReports.forEach(r => {
         for (let g in r.data) {
@@ -160,6 +184,13 @@ export default function AdminReports() {
         }
       }
 
+      // Pro-rate uConfRev if filtering by company
+      if (selectedCompany !== '전체' && totalUserEstRev > 0 && hasConfRev) {
+        uConfRev = Math.round(uConfRev * (uEstRev / totalUserEstRev));
+      } else if (selectedCompany !== '전체' && totalUserEstRev === 0 && u.company !== selectedCompany) {
+        uConfRev = 0;
+      }
+
       totalEstimated += uEstRev;
       totalConfirmed += uConfRev;
       totalRec += uRec;
@@ -173,6 +204,7 @@ export default function AdminReports() {
 
       return {
         ...u,
+        displayCompany: selectedCompany !== '전체' ? selectedCompany : u.company,
         rec: uRec,
         com: uCom,
         pen: uPen,
@@ -183,9 +215,10 @@ export default function AdminReports() {
         diff: uConfRev - uEstRev,
         activeMonths,
         activeDays,
-        hasData: uRec > 0 || uCom > 0 || uPen > 0 || uInvPen > 0 || uConfRev > 0
+        hasData: uRec > 0 || uCom > 0 || uPen > 0 || uInvPen > 0 || uConfRev > 0,
+        matchesCompany: selectedCompany === '전체' || u.company === selectedCompany || reports.length > 0
       };
-    }).filter(s => s.hasData || s.approved);
+    }).filter(s => s.matchesCompany && (s.hasData || s.approved));
 
     staffStats.sort((a, b) => {
       const valA = a.hasConfRev ? a.confRev : a.estRev;
@@ -470,7 +503,7 @@ export default function AdminReports() {
                             <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{(statsPage - 1) * itemsPerPage + idx + 1}위</span>
                             <h4 className="text-base font-extrabold text-slate-800">{staff.name}</h4>
                         </div>
-                        <div className="text-xs font-medium text-slate-400">{staff.company} / {staff.role} / {staff.rank}</div>
+                        <div className="text-xs font-medium text-slate-400">{staff.displayCompany} / {staff.role} / {staff.rank}</div>
                       </div>
                       
                       {periodType === 'year' ? (
