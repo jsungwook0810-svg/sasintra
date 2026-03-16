@@ -144,7 +144,7 @@ export default function Notices() {
             )}
             <div className="flex items-center gap-2 mb-1">
               {n.isPinned && (
-                <span className="bg-indigo-100 text-indigo-600 text-[0.65rem] font-black px-2 py-0.5 rounded-md tracking-tight">상단고정</span>
+                <span className="bg-indigo-100 text-indigo-600 text-[0.65rem] font-black px-2 py-0.5 rounded-md tracking-tight shrink-0 whitespace-nowrap">상단고정</span>
               )}
               <div className="font-bold text-lg text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap">{n.title}</div>
             </div>
@@ -271,7 +271,7 @@ export default function Notices() {
             
             <div className="ql-snow mb-8 sm:mb-10 flex-1 overflow-y-auto">
               <div 
-                className="ql-editor p-0 min-h-[200px] text-slate-700 leading-relaxed text-base sm:text-[1.05rem] break-words whitespace-pre-wrap [&_p]:mb-2 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mb-3 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:ml-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:ml-5 [&_ol]:mb-4"
+                className="ql-editor p-0 min-h-[200px] text-slate-700 leading-relaxed text-base sm:text-[1.05rem] break-words whitespace-pre-wrap [&_p]:min-h-[1.5rem] [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mb-3 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:ml-6 [&_ol]:mb-4 [&_li]:mb-1 [&_li]:pl-1"
                 dangerouslySetInnerHTML={{ __html: selectedNotice.content }}
               />
             </div>
