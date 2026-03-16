@@ -29,19 +29,27 @@ export default function MainApp() {
 
   useEffect(() => {
     if ('Notification' in window) {
-      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        Notification.requestPermission();
-      }
-
-      const unreadCount = notifications.filter(n => !n.read).length;
-      if (notifications.length > prevNotifsRef.current && unreadCount > 0) {
-        const latest = notifications[0];
-        if (!latest.read && Notification.permission === 'granted') {
-          new Notification(latest.title, {
-            body: latest.body,
-            icon: '/favicon.ico'
-          });
+      try {
+        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+          Notification.requestPermission().catch(console.error);
         }
+
+        const unreadCount = notifications.filter(n => !n.read).length;
+        if (notifications.length > prevNotifsRef.current && unreadCount > 0) {
+          const latest = notifications[0];
+          if (!latest.read && Notification.permission === 'granted') {
+            try {
+              new Notification(latest.title, {
+                body: latest.body,
+                icon: '/favicon.ico'
+              });
+            } catch (e) {
+              console.error('Failed to show notification:', e);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Notification API error:', e);
       }
     }
     prevNotifsRef.current = notifications.length;

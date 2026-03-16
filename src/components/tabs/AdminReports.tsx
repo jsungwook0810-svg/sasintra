@@ -30,6 +30,34 @@ export default function AdminReports() {
     setPushPrompt({ isOpen: true, user });
   };
 
+  const handleExcludeSubmit = async () => {
+    if (!pushPrompt?.user) return;
+    
+    try {
+      const { doc, setDoc, collection } = await import('firebase/firestore');
+      const { db, appId } = await import('@/lib/firebase');
+      
+      const reportId = `${selectedDate}_${pushPrompt.user.userId}`;
+      const reportRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'daily_reports'), reportId);
+      
+      await setDoc(reportRef, {
+        userId: pushPrompt.user.userId,
+        name: pushPrompt.user.name,
+        date: selectedDate,
+        data: {},
+        isExcluded: true,
+        company: pushPrompt.user.company || '전체',
+        role: pushPrompt.user.role || '기본 업무',
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      });
+    } catch (error) {
+      console.error('Error excluding user:', error);
+    } finally {
+      setPushPrompt(null);
+    }
+  };
+
   const handleSendPush = async () => {
     if (!pushPrompt?.user) return;
     
@@ -132,6 +160,10 @@ export default function AdminReports() {
 
       if (!todayReport) {
         missing.push({ ...u, company: inferredCompany });
+        return;
+      }
+
+      if (todayReport.isExcluded) {
         return;
       }
 
@@ -710,6 +742,13 @@ export default function AdminReports() {
                 className="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 transition-colors"
               >
                 N (취소)
+              </button>
+              <div className="w-[1px] bg-slate-100"></div>
+              <button 
+                onClick={handleExcludeSubmit}
+                className="flex-1 py-4 text-indigo-600 font-bold hover:bg-indigo-50 transition-colors"
+              >
+                제출제외
               </button>
               <div className="w-[1px] bg-slate-100"></div>
               <button 

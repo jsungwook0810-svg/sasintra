@@ -70,16 +70,24 @@ export default function EmployeeReport() {
       return alert("당일 이후의 날짜는 입력할 수 없습니다.");
     }
     
-    if (!editingId) {
-      const isDuplicate = allUserReports.some(r => r.date === reportDate);
-      if (isDuplicate) return alert("이미 마감보고를 하였습니다!");
+    let currentEditingId = editingId;
+
+    if (!currentEditingId) {
+      const existingReport = allUserReports.find(r => r.date === reportDate);
+      if (existingReport) {
+        if (existingReport.isExcluded) {
+          currentEditingId = existingReport.id;
+        } else {
+          return alert("이미 마감보고를 하였습니다!");
+        }
+      }
     }
 
     let reportCompany = currentUser?.company || "전체";
     let reportRole = currentUser?.role || "기본 업무";
 
-    if (editingId) {
-      const existingReport = allUserReports.find(r => r.id === editingId);
+    if (currentEditingId) {
+      const existingReport = allUserReports.find(r => r.id === currentEditingId);
       if (existingReport) {
         reportCompany = getReportCompany(existingReport, currentUser);
         reportRole = getReportRole(existingReport, currentUser);
@@ -93,12 +101,14 @@ export default function EmployeeReport() {
       memo,
       company: reportCompany,
       role: reportRole,
+      isExcluded: false,
       updatedAt: Date.now()
     };
 
-    if (editingId) {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'daily_reports', editingId), data);
-      alert("마감보고가 수정되었습니다.");
+    if (currentEditingId) {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'daily_reports', currentEditingId), data);
+      const wasExcluded = allUserReports.find(r => r.id === currentEditingId)?.isExcluded;
+      alert(wasExcluded ? "보고가 제출되었습니다." : "마감보고가 수정되었습니다.");
       handleCancelEdit();
     } else {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'daily_reports'), { ...data, createdAt: Date.now() });
@@ -115,16 +125,22 @@ export default function EmployeeReport() {
     setMemo(r.memo || "");
     
     const editData: Record<string, Record<string, number>> = {};
-    // Use only the keys from the existing report data
-    const reportGroups = Object.keys(r.data);
     
-    reportGroups.forEach(g => {
-      editData[g] = {
-        "접수": r.data[g]?.["접수"] || 0,
-        "종결": r.data[g]?.["종결"] || 0,
-        "미결": r.data[g]?.["미결"] || 0
-      };
-    });
+    if (r.isExcluded) {
+      groups.forEach(g => {
+        editData[g] = { "접수": 0, "종결": 0, "미결": 0 };
+      });
+    } else {
+      const reportGroups = Object.keys(r.data);
+      reportGroups.forEach(g => {
+        editData[g] = {
+          "접수": r.data[g]?.["접수"] || 0,
+          "종결": r.data[g]?.["종결"] || 0,
+          "미결": r.data[g]?.["미결"] || 0
+        };
+      });
+    }
+    
     setFormData(editData);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -259,11 +275,11 @@ export default function EmployeeReport() {
         </div>
 
         <button onClick={handleSubmit} className="w-full bg-slate-900 hover:bg-slate-800 text-white p-4 rounded-2xl font-bold transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] text-[1rem]">
-          {editingId ? "보고 수정하기" : "보고 제출하기"}
+          {editingId ? (allUserReports.find(r => r.id === editingId)?.isExcluded ? "보고 제출하기" : "보고 수정하기") : "보고 제출하기"}
         </button>
         {editingId && (
           <button onClick={handleCancelEdit} className="w-full mt-3 bg-slate-100 hover:bg-slate-200 text-slate-600 p-4 rounded-2xl font-bold transition-colors">
-            수정 취소
+            {allUserReports.find(r => r.id === editingId)?.isExcluded ? "작성 취소" : "수정 취소"}
           </button>
         )}
       </div>
@@ -286,15 +302,15 @@ export default function EmployeeReport() {
             });
 
             return (
-              <div key={r.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
-                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-400"></div>
+              <div key={r.id} className={`bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group ${r.isExcluded ? 'opacity-70' : ''}`}>
+                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${r.isExcluded ? 'bg-slate-300' : 'bg-indigo-400'}`}></div>
                 <div className="flex justify-between items-center border-b border-slate-100/80 pb-3 mb-3 pl-2">
-                  <b className="text-base text-slate-800">{r.date}</b>
-                  <span className="text-indigo-600 font-black text-lg">+{sum.toLocaleString()}원</span>
+                  <b className="text-base text-slate-800">{r.date} {r.isExcluded && <span className="ml-2 text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-md font-bold">제출 제외됨</span>}</b>
+                  {!r.isExcluded && <span className="text-indigo-600 font-black text-lg">+{sum.toLocaleString()}원</span>}
                 </div>
-                <div className="text-slate-500 leading-relaxed pl-2">{details}</div>
+                {!r.isExcluded && <div className="text-slate-500 leading-relaxed pl-2">{details}</div>}
                 <div className="flex gap-2 mt-4 justify-end">
-                  <button onClick={() => handleEdit(r.id)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-xs rounded-xl font-bold transition-colors">수정</button>
+                  <button onClick={() => handleEdit(r.id)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-xs rounded-xl font-bold transition-colors">{r.isExcluded ? '보고 작성' : '수정'}</button>
                   <button onClick={() => handleDelete(r.id)} className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 text-xs rounded-xl font-bold transition-colors">삭제</button>
                 </div>
               </div>
