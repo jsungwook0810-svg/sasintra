@@ -12,6 +12,7 @@ interface DataContextType {
   myMemos: any[];
   notices: any[];
   corpCardUsages: any[];
+  notifications: any[];
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -26,6 +27,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [myMemos, setMyMemos] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
   const [corpCardUsages, setCorpCardUsages] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -50,6 +52,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       data.sort((a: any, b: any) => b.createdAt - a.createdAt);
       setNotices(data);
+    });
+
+    const unsubNotifications = onSnapshot(collection(db, 'artifacts', appId, 'users', uid, 'notifications'), (snap) => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setNotifications(data);
     });
 
     const qRevenues = isAdmin 
@@ -81,6 +89,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       unsubLeaves();
       unsubMemos();
       unsubNotices();
+      unsubNotifications();
       unsubRevenues();
       if (unsubStaff) unsubStaff();
       if (unsubAllReports) unsubAllReports();
@@ -90,7 +99,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <DataContext.Provider value={{
-      allUserReports, allLeavesGlobal, globalStaffList, globalAllReports, globalActualRevenues, myMemos, notices, corpCardUsages
+      allUserReports, allLeavesGlobal, globalStaffList, globalAllReports, globalActualRevenues, myMemos, notices, corpCardUsages, notifications
     }}>
       {children}
     </DataContext.Provider>

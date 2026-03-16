@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import AdminSettlement from './tabs/AdminSettlement';
@@ -17,12 +17,35 @@ import { db, appId } from '@/lib/firebase';
 
 export default function MainApp() {
   const { currentUser, logout } = useAuth();
-  const { allUserReports, notices, allLeavesGlobal } = useData();
+  const { allUserReports, notices, allLeavesGlobal, notifications } = useData();
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [newPw, setNewPw] = useState('');
   
   const isAdmin = currentUser?.role === '관리자';
   const isJungSungWook = currentUser?.name === '정성욱';
+
+  const prevNotifsRef = useRef<number>(notifications.length);
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+
+      const unreadCount = notifications.filter(n => !n.read).length;
+      if (notifications.length > prevNotifsRef.current && unreadCount > 0) {
+        const latest = notifications[0];
+        if (!latest.read && Notification.permission === 'granted') {
+          new Notification(latest.title, {
+            body: latest.body,
+            icon: '/favicon.ico'
+          });
+        }
+      }
+    }
+    prevNotifsRef.current = notifications.length;
+  }, [notifications]);
   
   const tabs = isAdmin
     ? [
@@ -82,18 +105,82 @@ export default function MainApp() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-30px)] relative">
       {/* Hamburger Button and Active Tab Title */}
-      <div className="flex items-center gap-3 mb-6">
-        <button 
-          onClick={() => setIsNavOpen(true)}
-          className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
-        </button>
-        <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
-          {tabs.find(t => t.id === activeTab)?.label.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim()}
-        </h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsNavOpen(true)}
+            className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+          <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
+            {tabs.find(t => t.id === activeTab)?.label.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim()}
+          </h2>
+        </div>
+        
+        {/* Notification Bell */}
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors relative"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+            {notifications.filter(n => !n.read).length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white">
+                {notifications.filter(n => !n.read).length}
+              </span>
+            )}
+          </button>
+
+          {/* Notifications Dropdown */}
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+              <div className="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50">
+                <h3 className="font-bold text-slate-800">알림</h3>
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <button 
+                    onClick={async () => {
+                      const unread = notifications.filter(n => !n.read);
+                      for (const n of unread) {
+                        await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser!.userId, 'notifications', n.id), { read: true });
+                      }
+                    }}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                  >
+                    모두 읽음
+                  </button>
+                )}
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center text-slate-500 text-sm font-medium">새로운 알림이 없습니다.</div>
+                ) : (
+                  notifications.map(n => (
+                    <div 
+                      key={n.id} 
+                      className={`p-4 border-b border-slate-50 last:border-0 transition-colors ${n.read ? 'bg-white opacity-60' : 'bg-blue-50/50'}`}
+                      onClick={async () => {
+                        if (!n.read) {
+                          await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser!.userId, 'notifications', n.id), { read: true });
+                        }
+                      }}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className={`text-sm font-bold ${n.read ? 'text-slate-600' : 'text-slate-800'}`}>{n.title}</h4>
+                        <span className="text-[10px] font-medium text-slate-400">{new Date(n.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <p className={`text-xs ${n.read ? 'text-slate-500' : 'text-slate-600 font-medium'} leading-relaxed`}>{n.body}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Navigation Drawer Overlay */}

@@ -14,6 +14,88 @@ export default function AdminReports() {
   const [statsPage, setStatsPage] = useState(1);
   const itemsPerPage = 5;
 
+  const [detailsModal, setDetailsModal] = useState<{
+    isOpen: boolean;
+    user: any;
+    data: Record<string, any>;
+    periodLabel: string;
+  } | null>(null);
+
+  const [pushPrompt, setPushPrompt] = useState<{
+    isOpen: boolean;
+    user: any;
+  } | null>(null);
+
+  const handleMissingUserClick = (user: any) => {
+    setPushPrompt({ isOpen: true, user });
+  };
+
+  const handleSendPush = async () => {
+    if (!pushPrompt?.user) return;
+    
+    try {
+      const { doc, setDoc, collection } = await import('firebase/firestore');
+      const { db, appId } = await import('@/lib/firebase');
+      
+      const dateParts = selectedDate.split('-');
+      const formattedDate = `${dateParts[0]}년 ${dateParts[1]}월 ${dateParts[2]}일`;
+
+      const notifRef = doc(collection(db, 'artifacts', appId, 'users', pushPrompt.user.userId, 'notifications'));
+      await setDoc(notifRef, {
+        title: '마감보고 미제출 알림',
+        body: `${formattedDate} 마감보고 제출이 안되었으니 제출바랍니다!`,
+        createdAt: new Date().toISOString(),
+        read: false,
+        type: 'missing_report',
+        date: selectedDate
+      });
+    } catch (error) {
+      console.error('Error sending push:', error);
+    } finally {
+      setPushPrompt(null);
+    }
+  };
+
+  const handleUserClick = (user: any) => {
+    let aggregatedData: Record<string, { 접수: number, 종결: number, 미결: number }> = {};
+    let periodLabel = '';
+
+    if (periodType === 'day') {
+      periodLabel = `${selectedDate} 마감보고 상세`;
+      const todayReport = globalAllReports.find(r => r.userId === user.userId && r.date === selectedDate);
+      if (todayReport) {
+        aggregatedData = JSON.parse(JSON.stringify(todayReport.data));
+      }
+    } else {
+      const prefix = periodType === 'month' ? selectedMonth : selectedYear;
+      periodLabel = periodType === 'month' ? `${selectedMonth} 누적 마감보고 상세` : `${selectedYear} 누적 마감보고 상세`;
+      
+      const reports = globalAllReports.filter(r => r.userId === user.userId && r.date.startsWith(prefix));
+      const sortedReports = [...reports].sort((a, b) => a.date.localeCompare(b.date));
+      
+      sortedReports.forEach(r => {
+        for (let g in r.data) {
+          if (!aggregatedData[g]) aggregatedData[g] = { 접수: 0, 종결: 0, 미결: 0 };
+          const d = r.data[g];
+          if (g === '조사미결') {
+            if (d['미결'] !== undefined) aggregatedData[g]['미결'] = d['미결'];
+          } else {
+            aggregatedData[g]['접수'] += (d['접수'] || 0);
+            aggregatedData[g]['종결'] += (d['종결'] || 0);
+            if (d['미결'] !== undefined) aggregatedData[g]['미결'] = d['미결'];
+          }
+        }
+      });
+    }
+
+    setDetailsModal({
+      isOpen: true,
+      user,
+      data: aggregatedData,
+      periodLabel
+    });
+  };
+
   useEffect(() => {
     setDailyPage(1);
     setStatsPage(1);
@@ -28,6 +110,7 @@ export default function AdminReports() {
 
     globalStaffList.forEach(u => {
       if (u.role === '관리자' || !u.approved) return;
+      if (u.joinDate && u.joinDate > selectedDate) return;
 
       // Get all reports for this user up to the selected date
       const allUserReports = globalAllReports.filter(r => r.userId === u.userId && r.date <= selectedDate);
@@ -124,7 +207,14 @@ export default function AdminReports() {
     let totalPen = 0;
     let totalInvPen = 0;
 
-    const staffStats = globalStaffList.filter(u => u.role !== '관리자').map(u => {
+    const staffStats = globalStaffList.filter(u => u.role !== '관리자').filter(u => {
+      if (!u.joinDate) return true;
+      if (periodType === 'month') {
+        return u.joinDate <= selectedMonth + '-31';
+      } else {
+        return u.joinDate <= selectedYear + '-12-31';
+      }
+    }).map(u => {
       const allPrefixReports = globalAllReports.filter(r => r.userId === u.userId && r.date.startsWith(prefix));
       
       // Filter reports by selectedCompany
@@ -331,7 +421,11 @@ export default function AdminReports() {
               </h3>
               <div className="flex flex-wrap gap-2">
                 {dailyStats.missing.map(u => (
-                  <span key={u.userId} className="bg-white text-rose-500 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-rose-100">
+                  <span 
+                    key={u.userId} 
+                    onClick={() => handleMissingUserClick(u)}
+                    className="bg-white text-rose-500 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-rose-100 cursor-pointer hover:bg-rose-50 transition-colors"
+                  >
                     {u.name} <span className="text-rose-300 font-normal">({u.company})</span>
                   </span>
                 ))}
@@ -352,7 +446,7 @@ export default function AdminReports() {
               ) : (
                 <>
                   {dailyStats.submitted.slice((dailyPage - 1) * itemsPerPage, dailyPage * itemsPerPage).map((staff, idx) => (
-                    <div key={staff.userId} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
+                    <div key={staff.userId} onClick={() => handleUserClick(staff)} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
                     <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400"></div>
                     
                     <div className="flex justify-between items-start mb-4 pl-2">
@@ -494,7 +588,7 @@ export default function AdminReports() {
               ) : (
                 <>
                   {stats.staffStats.slice((statsPage - 1) * itemsPerPage, statsPage * itemsPerPage).map((staff, idx) => (
-                    <div key={staff.userId} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
+                    <div key={staff.userId} onClick={() => handleUserClick(staff)} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
                       <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-400"></div>
                       
                       <div className="flex justify-between items-start mb-4 pl-2">
@@ -597,6 +691,98 @@ export default function AdminReports() {
           </div>
         </>
       ) : null}
+
+      {/* Push Prompt Modal */}
+      {pushPrompt?.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+            <div className="p-6 text-center">
+              <div className="text-4xl mb-4">🔔</div>
+              <h3 className="text-lg font-extrabold text-slate-800 mb-2">마감보고 제출 알림</h3>
+              <p className="text-slate-600 font-medium text-sm">
+                <span className="font-bold text-blue-600">{pushPrompt.user.name}</span> 직원에게<br/>
+                마감보고를 제출하라고 다시 전달하겠습니까?
+              </p>
+            </div>
+            <div className="flex border-t border-slate-100">
+              <button 
+                onClick={() => setPushPrompt(null)}
+                className="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 transition-colors"
+              >
+                N (취소)
+              </button>
+              <div className="w-[1px] bg-slate-100"></div>
+              <button 
+                onClick={handleSendPush}
+                className="flex-1 py-4 text-blue-600 font-bold hover:bg-blue-50 transition-colors"
+              >
+                Y (전달)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Details Modal */}
+      {detailsModal?.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-800">{detailsModal.user.name}</h3>
+                <p className="text-sm text-slate-500 font-medium">{detailsModal.periodLabel}</p>
+              </div>
+              <button onClick={() => setDetailsModal(null)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors">
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {Object.keys(detailsModal.data).length === 0 ? (
+                <p className="text-center text-slate-500 py-4 font-medium">데이터가 없습니다.</p>
+              ) : (
+                Object.entries(detailsModal.data)
+                  .sort(([catA], [catB]) => {
+                    if (catA === '조사미결') return 1;
+                    if (catB === '조사미결') return -1;
+                    const feeDiff = (feeMap[catB] || 0) - (feeMap[catA] || 0);
+                    if (feeDiff !== 0) return feeDiff;
+                    if (catA === '시설소유관리자') return -1;
+                    if (catB === '시설소유관리자') return 1;
+                    return catA.localeCompare(catB);
+                  })
+                  .map(([category, values]: [string, any]) => (
+                  <div key={category} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <h4 className="font-bold text-slate-800 mb-3 text-sm">{category}</h4>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      {category !== '조사미결' ? (
+                        <>
+                          <div className="bg-white py-2 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="text-[10px] text-slate-400 font-bold mb-1">접수</div>
+                            <div className="text-sm font-extrabold text-blue-600">{values['접수'] || 0}</div>
+                          </div>
+                          <div className="bg-white py-2 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="text-[10px] text-slate-400 font-bold mb-1">종결</div>
+                            <div className="text-sm font-extrabold text-emerald-600">{values['종결'] || 0}</div>
+                          </div>
+                          <div className="bg-white py-2 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="text-[10px] text-slate-400 font-bold mb-1">미결</div>
+                            <div className="text-sm font-extrabold text-rose-600">{values['미결'] || 0}</div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="col-span-3 bg-white py-2 rounded-xl border border-slate-100 shadow-sm">
+                          <div className="text-[10px] text-slate-400 font-bold mb-1">미결</div>
+                          <div className="text-sm font-extrabold text-rose-600">{values['미결'] || 0}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
