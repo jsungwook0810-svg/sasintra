@@ -10,7 +10,7 @@ const Quill = ReactQuill as any;
 
 export default function Notices() {
   const { currentUser } = useAuth();
-  const { notices } = useData();
+  const { notices, globalStaffList } = useData();
   const [showWrite, setShowWrite] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -70,6 +70,17 @@ export default function Notices() {
           authorId: currentUser?.userId,
           createdAt: Date.now()
         });
+        
+        // Add notification for all users
+        for (const user of globalStaffList) {
+          await addDoc(collection(db, 'artifacts', appId, 'users', user.userId, 'notifications'), {
+            title: '새 공지사항',
+            body: title,
+            createdAt: new Date().toISOString(),
+            read: false,
+            type: 'notice'
+          });
+        }
       }
       setShowWrite(false);
       setTitle('');
