@@ -360,6 +360,7 @@ export default function AdminStaff() {
                               <b className="text-sm text-slate-700">{u.name}</b> 
                               <small className="text-slate-500 ml-1">({u.userId} / {u.company}/{u.role}/{u.rank})</small>
                               <span className="ml-2 bg-slate-200 text-slate-600 text-[0.65rem] px-2 py-0.5 rounded-full font-bold">퇴사자</span>
+                              {u.resignDate && <span className="ml-2 text-xs text-slate-400 font-medium">퇴사일: {u.resignDate}</span>}
                             </span>
                             <div className="flex gap-1.5">
                               <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold">수정</button>

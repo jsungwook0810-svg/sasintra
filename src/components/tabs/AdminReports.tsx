@@ -139,6 +139,7 @@ export default function AdminReports() {
     globalStaffList.forEach(u => {
       if (u.role === '관리자' || !u.approved) return;
       if (u.joinDate && u.joinDate > selectedDate) return;
+      if (u.isResigned && (!u.resignDate || u.resignDate < selectedDate)) return;
 
       // Get all reports for this user up to the selected date
       const allUserReports = globalAllReports.filter(r => r.userId === u.userId && r.date <= selectedDate);
