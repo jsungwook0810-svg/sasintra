@@ -468,9 +468,34 @@ export default function AdminStaff() {
 
       {viewLeavesStaff && (() => {
         const cy = new Date().getFullYear();
+        const jy = viewLeavesStaff.joinDate ? parseInt(viewLeavesStaff.joinDate.substring(0, 4)) : cy;
+        
+        const myLeaves = allLeavesGlobal.filter(l => l.userId === viewLeavesStaff.userId);
+        
+        let carryOverDeficit = 0;
+        if (viewLeavesStaff.joinDate) {
+          for (let y = jy; y < cy; y++) {
+            const generatedForYear = calculateAnnualLeave(viewLeavesStaff.joinDate, y).total;
+            let usedInYear = 0;
+            myLeaves.forEach(l => {
+              let st = l.startDate || l.date || "";
+              if (st.startsWith(y.toString())) {
+                if (l.type !== '공가' && l.type !== '무급연차') {
+                  usedInYear += l.days;
+                }
+              }
+            });
+            const balance = generatedForYear - usedInYear - carryOverDeficit;
+            if (balance < 0) {
+              carryOverDeficit = Math.abs(balance);
+            } else {
+              carryOverDeficit = 0;
+            }
+          }
+        }
+
         const generatedThisYear = viewLeavesStaff.joinDate ? calculateAnnualLeave(viewLeavesStaff.joinDate, cy).total : 0;
         
-        const myLeaves = allLeavesGlobal.filter(l => l.userId === viewLeavesStaff.userId && l.status === '승인');
         let used = 0;
         myLeaves.forEach(l => {
           let st = l.startDate || l.date || "";
@@ -481,7 +506,7 @@ export default function AdminStaff() {
           }
         });
 
-        const remaining = generatedThisYear - used;
+        const remaining = generatedThisYear - carryOverDeficit - used;
 
         return (
           <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
@@ -503,8 +528,14 @@ export default function AdminStaff() {
                   <span className="text-sm font-bold text-slate-600">올해 총 발생 연차</span>
                   <span className="text-lg font-extrabold text-blue-600">{generatedThisYear}일</span>
                 </div>
+                {carryOverDeficit > 0 && (
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm font-bold text-slate-600">전년도 초과 사용분</span>
+                    <span className="text-lg font-extrabold text-rose-500">-{carryOverDeficit}일</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-bold text-slate-600">사용 연차</span>
+                  <span className="text-sm font-bold text-slate-600">올해 사용 연차</span>
                   <span className="text-lg font-extrabold text-rose-500">{used}일</span>
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-slate-200">
