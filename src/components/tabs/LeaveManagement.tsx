@@ -30,7 +30,7 @@ export default function LeaveManagement() {
 
   if (currentUser?.joinDate) {
     for (let y = jy; y < cy; y++) {
-      const generatedForYear = calculateAnnualLeave(currentUser.joinDate, y);
+      const generatedForYear = calculateAnnualLeave(currentUser.joinDate, y).total;
       let usedInYear = 0;
       myLeaves.forEach(l => {
         let st = l.startDate || l.date || "";
@@ -59,7 +59,7 @@ export default function LeaveManagement() {
     }
   });
 
-  const generatedThisYear = currentUser?.joinDate ? calculateAnnualLeave(currentUser.joinDate, cy) : 0;
+  const generatedThisYear = currentUser?.joinDate ? calculateAnnualLeave(currentUser.joinDate, cy).displayForEmployee : 0;
   const total = generatedThisYear - carryOverDeficit;
 
   const handleSubmit = async () => {

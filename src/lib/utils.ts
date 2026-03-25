@@ -38,13 +38,13 @@ export function getBusinessDays(startStr: string, endStr: string) {
 }
 
 export function calculateAnnualLeave(jStr: string, targetYear?: number) {
-  if (!jStr) return 0;
+  if (!jStr) return { total: 0, monthly: 0, annual: 0, displayForEmployee: 0 };
   const jd = new Date(jStr);
   const today = getKSTTime();
   const ty = targetYear !== undefined ? targetYear : today.getFullYear();
   const jy = jd.getFullYear();
   
-  if (ty < jy) return 0;
+  if (ty < jy) return { total: 0, monthly: 0, annual: 0, displayForEmployee: 0 };
 
   // Helper to get full months worked between two dates
   const getMonthsDiff = (start: Date, end: Date) => {
@@ -81,9 +81,15 @@ export function calculateAnnualLeave(jStr: string, targetYear?: number) {
     annualLeavesForTy = 0;
   } else if (ty === jy + 1) {
     // 입사 이듬해: 전년도 근무일수에 비례하여 1월 1일에 연차 발생
-    const endOfFirstYear = new Date(jy, 11, 31);
-    const daysInFirstYear = Math.floor((endOfFirstYear.getTime() - jd.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    annualLeavesForTy = (15 * daysInFirstYear) / 365;
+    let ratio;
+    if (jd.getDate() === 1) {
+      ratio = (12 - jd.getMonth()) / 12;
+    } else {
+      const endOfFirstYear = new Date(jy, 11, 31);
+      const daysInFirstYear = Math.floor((endOfFirstYear.getTime() - jd.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      ratio = daysInFirstYear / 365;
+    }
+    annualLeavesForTy = 15 * ratio;
   } else {
     // 3년차 이상: 기본 15일 + 가산 연차
     const yearsOfService = ty - jy;
@@ -93,8 +99,38 @@ export function calculateAnnualLeave(jStr: string, targetYear?: number) {
 
   const totalLeave = monthlyLeavesForTy + annualLeavesForTy;
 
-  // 반올림 규칙: 13.1 -> 13.5, 13.5 -> 13.5, 13.6 -> 14
-  return Math.ceil(totalLeave * 2) / 2;
+  // 반올림 규칙: 0.5 미만은 버림, 0.5 초과는 올림, 정확히 0.5는 0.5로 유지
+  const roundLeave = (val: number) => {
+    const integerPart = Math.floor(val);
+    const decimalPart = val - integerPart;
+    const dec = Math.round(decimalPart * 100);
+    if (dec < 50) return integerPart;
+    if (dec === 50) return integerPart + 0.5;
+    return integerPart + 1;
+  };
+
+  const roundedTotal = roundLeave(totalLeave);
+  const roundedMonthly = roundLeave(monthlyLeavesForTy);
+  const roundedAnnual = roundLeave(annualLeavesForTy);
+
+  // 1년 미만 직원은 월차만 보이게, 1년이 지나면 연차 비례 휴가도 보이게
+  const oneYearAnniversary = new Date(jd);
+  oneYearAnniversary.setFullYear(oneYearAnniversary.getFullYear() + 1);
+
+  let displayForEmployee = roundedTotal;
+  if (ty === today.getFullYear()) {
+    if (today < oneYearAnniversary) {
+      // 1년 미만: 현재 발생된 월차만 표시
+      displayForEmployee = roundedMonthly;
+    }
+  }
+
+  return {
+    total: roundedTotal,
+    monthly: roundedMonthly,
+    annual: roundedAnnual,
+    displayForEmployee: displayForEmployee
+  };
 }
 
 export function getReportCompany(report: any, staff: any) {

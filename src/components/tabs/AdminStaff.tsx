@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { doc, setDoc, deleteDoc, getDoc, updateDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
+import { calculateAnnualLeave } from '@/lib/utils';
 
 export default function AdminStaff() {
-  const { globalStaffList } = useData();
+  const { globalStaffList, allLeavesGlobal } = useData();
   const [name, setName] = useState('');
   const [joinDate, setJoinDate] = useState('');
   const [id, setId] = useState('');
@@ -17,6 +18,8 @@ export default function AdminStaff() {
   const [editCompany, setEditCompany] = useState('삼성');
   const [editRole, setEditRole] = useState('누수팀');
   const [editRank, setEditRank] = useState('사원');
+
+  const [viewLeavesStaff, setViewLeavesStaff] = useState<any>(null);
 
   const [subTab, setSubTab] = useState<'register' | 'manage'>('manage');
   const [showResigned, setShowResigned] = useState(false);
@@ -293,6 +296,7 @@ export default function AdminStaff() {
                           <small className="text-slate-500 ml-1">({u.userId} / {u.rank})</small>
                         </span>
                         <div className="flex gap-1.5">
+                          <button onClick={() => setViewLeavesStaff(u)} className="bg-emerald-500 text-white px-3 py-1.5 text-xs rounded-lg font-bold">연차</button>
                           <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold">수정</button>
                           <button onClick={() => requestResign(u)} className="bg-slate-800 text-white px-3 py-1.5 text-xs rounded-lg font-bold">퇴사</button>
                         </div>
@@ -363,6 +367,7 @@ export default function AdminStaff() {
                               {u.resignDate && <span className="ml-2 text-xs text-slate-400 font-medium">퇴사일: {u.resignDate}</span>}
                             </span>
                             <div className="flex gap-1.5">
+                              <button onClick={() => setViewLeavesStaff(u)} className="bg-emerald-500 text-white px-3 py-1.5 text-xs rounded-lg font-bold">연차</button>
                               <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold">수정</button>
                               <button onClick={() => cancelResign(u)} className="bg-slate-400 text-white px-3 py-1.5 text-xs rounded-lg font-bold">퇴사취소</button>
                               <button onClick={() => handleHardDelete(u.userId)} className="bg-rose-50 text-rose-500 hover:bg-rose-100 px-3 py-1.5 text-xs rounded-lg font-bold">영구삭제</button>
@@ -460,6 +465,59 @@ export default function AdminStaff() {
           </div>
         </div>
       )}
+
+      {viewLeavesStaff && (() => {
+        const cy = new Date().getFullYear();
+        const generatedThisYear = viewLeavesStaff.joinDate ? calculateAnnualLeave(viewLeavesStaff.joinDate, cy).total : 0;
+        
+        const myLeaves = allLeavesGlobal.filter(l => l.userId === viewLeavesStaff.userId && l.status === '승인');
+        let used = 0;
+        myLeaves.forEach(l => {
+          let st = l.startDate || l.date || "";
+          if (st.startsWith(cy.toString())) {
+            if (l.type !== '공가' && l.type !== '무급연차') {
+              used += l.days;
+            }
+          }
+        });
+
+        const remaining = generatedThisYear - used;
+
+        return (
+          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
+            <div className="bg-white p-6 rounded-[20px] w-full max-w-[400px] shadow-2xl">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-slate-800">연차 상세 현황</h2>
+                <button onClick={() => setViewLeavesStaff(null)} className="text-slate-400 hover:text-slate-600">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="font-bold text-blue-600 text-lg">{viewLeavesStaff.name} <span className="text-sm text-slate-500 font-medium">({viewLeavesStaff.rank})</span></p>
+                <p className="text-sm text-slate-500">입사일: {viewLeavesStaff.joinDate || '미입력'}</p>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm font-bold text-slate-600">올해 총 발생 연차</span>
+                  <span className="text-lg font-extrabold text-blue-600">{generatedThisYear}일</span>
+                </div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm font-bold text-slate-600">사용 연차</span>
+                  <span className="text-lg font-extrabold text-rose-500">{used}일</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t border-slate-200">
+                  <span className="text-sm font-bold text-slate-800">잔여 연차</span>
+                  <span className="text-xl font-black text-emerald-600">{remaining}일</span>
+                </div>
+              </div>
+
+              <button onClick={() => setViewLeavesStaff(null)} className="w-full bg-slate-800 text-white p-3 rounded-xl font-bold">닫기</button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

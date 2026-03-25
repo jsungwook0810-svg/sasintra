@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
-import { getKSTMonth, getKSTToday, feeMap, getReportCompany } from '@/lib/utils';
+import { getKSTMonth, getKSTToday, feeMap, getReportCompany, calculatePerformance } from '@/lib/utils';
 
 export default function AdminReports() {
-  const { globalStaffList, globalAllReports, globalActualRevenues } = useData();
+  const { globalStaffList, globalAllReports, globalActualRevenues, allLeavesGlobal } = useData();
   const [periodType, setPeriodType] = useState<'day' | 'month' | 'year'>('day');
   const [selectedDate, setSelectedDate] = useState(getKSTToday());
   const [selectedMonth, setSelectedMonth] = useState(getKSTMonth());
@@ -141,6 +141,15 @@ export default function AdminReports() {
       if (u.joinDate && u.joinDate > selectedDate) return;
       if (u.isResigned && (!u.resignDate || u.resignDate < selectedDate)) return;
 
+      // Check if user is on leave (excluding half-day leave)
+      const isOnLeave = allLeavesGlobal?.some(leave => 
+        leave.userId === u.userId && 
+        !leave.type.includes('반차') &&
+        leave.startDate <= selectedDate && 
+        leave.endDate >= selectedDate
+      );
+      if (isOnLeave) return;
+
       // Get all reports for this user up to the selected date
       const allUserReports = globalAllReports.filter(r => r.userId === u.userId && r.date <= selectedDate);
       allUserReports.sort((a, b) => b.date.localeCompare(a.date)); // Descending
@@ -241,6 +250,10 @@ export default function AdminReports() {
     let totalInvPen = 0;
 
     const staffStats = globalStaffList.filter(u => u.role !== '관리자').filter(u => {
+      if (u.isResigned && u.resignDate) {
+        if (periodType === 'month' && u.resignDate < selectedMonth + '-01') return false;
+        if (periodType === 'year' && u.resignDate < selectedYear + '-01-01') return false;
+      }
       if (!u.joinDate) return true;
       if (periodType === 'month') {
         return u.joinDate <= selectedMonth + '-31';
@@ -293,25 +306,38 @@ export default function AdminReports() {
 
       let uConfRev = 0;
       let hasConfRev = false;
+      let uIncentive = 0;
+
       if (periodType === 'month') {
         const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === selectedMonth);
         if (act) {
           uConfRev = act.amount;
           hasConfRev = true;
         }
+        const p = calculatePerformance(u.userId, selectedMonth, globalStaffList, globalAllReports, globalActualRevenues);
+        if (p) uIncentive = p.incentive;
       } else {
         const acts = globalActualRevenues.filter(ar => ar.userId === u.userId && ar.month.startsWith(selectedYear));
         if (acts.length > 0) {
           uConfRev = acts.reduce((sum, ar) => sum + ar.amount, 0);
           hasConfRev = true;
         }
+        // Calculate incentive for each month in the year
+        for (let m = 1; m <= 12; m++) {
+          const monthStr = `${selectedYear}-${String(m).padStart(2, '0')}`;
+          const p = calculatePerformance(u.userId, monthStr, globalStaffList, globalAllReports, globalActualRevenues);
+          if (p) uIncentive += p.incentive;
+        }
       }
 
-      // Pro-rate uConfRev if filtering by company
-      if (selectedCompany !== '전체' && totalUserEstRev > 0 && hasConfRev) {
-        uConfRev = Math.round(uConfRev * (uEstRev / totalUserEstRev));
+      // Pro-rate uConfRev and uIncentive if filtering by company
+      if (selectedCompany !== '전체' && totalUserEstRev > 0) {
+        const ratio = uEstRev / totalUserEstRev;
+        if (hasConfRev) uConfRev = Math.round(uConfRev * ratio);
+        uIncentive = Math.round(uIncentive * ratio);
       } else if (selectedCompany !== '전체' && totalUserEstRev === 0 && u.company !== selectedCompany) {
         uConfRev = 0;
+        uIncentive = 0;
       }
 
       totalEstimated += uEstRev;
@@ -335,6 +361,7 @@ export default function AdminReports() {
         estRev: uEstRev,
         confRev: uConfRev,
         hasConfRev,
+        incentive: uIncentive,
         diff: uConfRev - uEstRev,
         activeMonths,
         activeDays,
@@ -685,6 +712,10 @@ export default function AdminReports() {
                           <div className="flex justify-between items-center">
                             <span className="text-xs font-bold text-emerald-700">확정매출</span>
                             <span className="text-sm font-extrabold text-emerald-600">{staff.confRev.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-amber-600">예상 인센티브</span>
+                            <span className="text-sm font-extrabold text-amber-500">{staff.incentive.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between items-center pt-1 border-t border-emerald-100/50">
                             <span className="text-[10px] font-medium text-slate-400">차액</span>
