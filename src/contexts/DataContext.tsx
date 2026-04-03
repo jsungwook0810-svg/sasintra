@@ -65,7 +65,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       : query(collection(db, 'artifacts', appId, 'public', 'data', 'actual_revenues'), where("userId", "==", uid));
     
     const unsubRevenues = onSnapshot(qRevenues, (snap) => {
-      setGlobalActualRevenues(snap.docs.map(d => d.data()));
+      setGlobalActualRevenues(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
     let unsubStaff: any;

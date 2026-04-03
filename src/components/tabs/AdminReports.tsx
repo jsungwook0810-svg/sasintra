@@ -387,6 +387,43 @@ export default function AdminReports() {
     };
   }, [periodType, selectedMonth, selectedYear, selectedCompany, globalStaffList, globalAllReports, globalActualRevenues]);
 
+  const monthlyBreakdown = useMemo(() => {
+    if (periodType !== 'year') return null;
+    const breakdown = [];
+    for (let m = 1; m <= 12; m++) {
+      const monthStr = `${selectedYear}-${String(m).padStart(2, '0')}`;
+      
+      const monthReports = globalAllReports.filter(r => r.date.startsWith(monthStr));
+      let rec = 0;
+      let com = 0;
+      monthReports.forEach(r => {
+        const u = globalStaffList.find(s => s.userId === r.userId);
+        if (selectedCompany !== '전체' && u && getReportCompany(r, u) !== selectedCompany) return;
+        
+        for (let g in r.data) {
+          if (g !== '조사미결') {
+            rec += (r.data[g]['접수'] || 0);
+            com += (r.data[g]['종결'] || 0);
+          }
+        }
+      });
+
+      const monthRevenues = globalActualRevenues.filter(ar => ar.month === monthStr);
+      let rev = 0;
+      monthRevenues.forEach(ar => {
+        const u = globalStaffList.find(s => s.userId === ar.userId);
+        if (selectedCompany !== '전체' && u) {
+          const comp = ar.company || u.company;
+          if (comp !== selectedCompany) return;
+        }
+        rev += (ar.amount || 0);
+      });
+
+      breakdown.push({ month: m, rec, com, rev });
+    }
+    return breakdown;
+  }, [periodType, selectedYear, selectedCompany, globalAllReports, globalActualRevenues, globalStaffList]);
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -453,21 +490,49 @@ export default function AdminReports() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-600 mb-2">🏢 소속 필터</label>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {['전체', '삼성', '마이브라운'].map(c => (
-              <button
-                key={c}
-                onClick={() => setSelectedCompany(c)}
-                className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${selectedCompany === c ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {['전체', '삼성', '마이브라운'].map(c => (
+            <button
+              key={c}
+              onClick={() => { setSelectedCompany(c); setDailyPage(1); setStatsPage(1); }}
+              className={`px-4 py-2 rounded-xl font-bold whitespace-nowrap transition-colors ${selectedCompany === c ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
+            >
+              {c}
+            </button>
+          ))}
         </div>
       </div>
+
+      {periodType === 'year' && monthlyBreakdown && (
+        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 to-orange-500"></div>
+          <h3 className="text-lg text-slate-800 m-0 mb-6 font-extrabold tracking-tight flex items-center gap-2">
+            <span>📅</span> {selectedYear}년 월별 요약
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="p-3 text-sm font-bold text-slate-600">월</th>
+                  <th className="p-3 text-sm font-bold text-slate-600">총 접수</th>
+                  <th className="p-3 text-sm font-bold text-slate-600">총 종결</th>
+                  <th className="p-3 text-sm font-bold text-slate-600">총 매출 (확정기준)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyBreakdown.map(b => (
+                  <tr key={b.month} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3 text-sm font-bold text-slate-800">{b.month}월</td>
+                    <td className="p-3 text-sm text-slate-600 font-medium">{b.rec.toLocaleString()}건</td>
+                    <td className="p-3 text-sm text-slate-600 font-medium">{b.com.toLocaleString()}건</td>
+                    <td className="p-3 text-sm font-bold text-indigo-600">{b.rev.toLocaleString()}원</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Conditional Rendering based on periodType */}
       {periodType === 'day' && dailyStats ? (

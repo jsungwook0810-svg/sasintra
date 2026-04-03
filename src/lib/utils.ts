@@ -161,7 +161,7 @@ export function getReportRole(report: any, staff: any) {
   return staff?.role || "기본 업무";
 }
 
-export function calculatePerformance(uid: string, month: string, globalStaffList: any[], globalAllReports: any[], globalActualRevenues: any[]) {
+export function calculatePerformance(uid: string, month: string, globalStaffList: any[], globalAllReports: any[], globalActualRevenues: any[], targetCompany?: string) {
   const staff = globalStaffList.find(s => s.userId === uid);
   if (!staff) return null;
   
@@ -173,7 +173,11 @@ export function calculatePerformance(uid: string, month: string, globalStaffList
   if (!conf) return null;
 
   let mRev = 0;
-  const reports = globalAllReports.filter(r => r.userId === uid && r.date.startsWith(month));
+  let reports = globalAllReports.filter(r => r.userId === uid && r.date.startsWith(month));
+  if (targetCompany && targetCompany !== '전체') {
+    reports = reports.filter(r => getReportCompany(r, staff) === targetCompany);
+  }
+  
   const sortedReports = [...reports].sort((a, b) => a.date.localeCompare(b.date));
   const breakdown: Record<string, any> = {};
   
@@ -190,13 +194,17 @@ export function calculatePerformance(uid: string, month: string, globalStaffList
 
   mRev = Object.values(breakdown).reduce((sum, b) => sum + b.rev, 0);
   
-  const actRec = globalActualRevenues.find(ar => ar.userId === uid && ar.month === month);
-  const finalRev = actRec ? actRec.amount : mRev;
+  let actRecs = globalActualRevenues.filter(ar => ar.userId === uid && ar.month === month);
+  if (targetCompany && targetCompany !== '전체') {
+    actRecs = actRecs.filter(ar => ar.company === targetCompany || (!ar.company && staff.company === targetCompany));
+  }
+  const finalRev = actRecs.length > 0 ? actRecs.reduce((sum, ar) => sum + ar.amount, 0) : mRev;
   
   let inc = 0;
   if (finalRev >= conf.target) {
     let rate = 0.35;
-    if (staff.company === "마이브라운") {
+    const comp = targetCompany && targetCompany !== '전체' ? targetCompany : staff.company;
+    if (comp === "마이브라운") {
       rate = finalRev >= 9500000 ? 0.44 : (finalRev >= 8250000 ? 0.41 : (finalRev >= 7000000 ? 0.38 : 0.35));
     } else if (staff.role === "누수팀") {
       rate = finalRev >= 10000000 ? 0.44 : (finalRev >= 8750000 ? 0.41 : (finalRev >= 7500000 ? 0.38 : 0.35));
@@ -212,7 +220,7 @@ export function calculatePerformance(uid: string, month: string, globalStaffList
     company: staff.company,
     role: staff.role,
     rank: staff.rank,
-    reports,
+    reports: sortedReports,
     itemBreakdown: breakdown
   };
 }
