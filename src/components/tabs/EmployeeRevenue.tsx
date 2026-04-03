@@ -19,20 +19,32 @@ export default function EmployeeRevenue() {
 
   for (let m = 12; m >= 1; m--) {
     const mStr = `${year}-${String(m).padStart(2, '0')}`;
-    const act = yearlyRevs.find(r => r.month === mStr);
+    const acts = yearlyRevs.filter(r => r.month === mStr);
     
-    if (act) {
-      tRev += act.amount;
-      if (act.amount > maxRev) {
-        maxRev = act.amount;
+    if (acts.length > 0) {
+      const totalAmount = acts.reduce((sum, act) => sum + (act.amount || 0), 0);
+      tRev += totalAmount;
+      if (totalAmount > maxRev) {
+        maxRev = totalAmount;
         maxM = `${m}월`;
       }
+      
       h.push(
         <div key={mStr} className="bg-white p-4 rounded-xl border border-slate-200 border-l-[4px] border-l-blue-500 shadow-sm mb-3">
           <div className="flex justify-between items-center">
             <b className="text-sm">{m}월 확정 매출</b>
-            <span className="text-blue-500 font-extrabold text-lg">{act.amount.toLocaleString()}원</span>
+            <span className="text-blue-500 font-extrabold text-lg">{totalAmount.toLocaleString()}원</span>
           </div>
+          {acts.length > 1 && (
+            <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-1">
+              {acts.map((act, idx) => (
+                <div key={idx} className="flex justify-between text-xs text-slate-500">
+                  <span>{act.company || currentUser?.company || '기본'}</span>
+                  <span>{act.amount.toLocaleString()}원</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       );
     } else {

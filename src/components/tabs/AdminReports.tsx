@@ -309,35 +309,39 @@ export default function AdminReports() {
       let uIncentive = 0;
 
       if (periodType === 'month') {
-        const act = globalActualRevenues.find(ar => ar.userId === u.userId && ar.month === selectedMonth);
-        if (act) {
-          uConfRev = act.amount;
+        const acts = globalActualRevenues.filter(ar => {
+          if (ar.userId !== u.userId || ar.month !== selectedMonth) return false;
+          if (selectedCompany !== '전체') {
+            const comp = ar.company || u.company;
+            return comp === selectedCompany;
+          }
+          return true;
+        });
+        if (acts.length > 0) {
+          uConfRev = acts.reduce((sum, ar) => sum + (ar.amount || 0), 0);
           hasConfRev = true;
         }
-        const p = calculatePerformance(u.userId, selectedMonth, globalStaffList, globalAllReports, globalActualRevenues);
+        const p = calculatePerformance(u.userId, selectedMonth, globalStaffList, globalAllReports, globalActualRevenues, selectedCompany !== '전체' ? selectedCompany : undefined);
         if (p) uIncentive = p.incentive;
       } else {
-        const acts = globalActualRevenues.filter(ar => ar.userId === u.userId && ar.month.startsWith(selectedYear));
+        const acts = globalActualRevenues.filter(ar => {
+          if (ar.userId !== u.userId || !ar.month.startsWith(selectedYear)) return false;
+          if (selectedCompany !== '전체') {
+            const comp = ar.company || u.company;
+            return comp === selectedCompany;
+          }
+          return true;
+        });
         if (acts.length > 0) {
-          uConfRev = acts.reduce((sum, ar) => sum + ar.amount, 0);
+          uConfRev = acts.reduce((sum, ar) => sum + (ar.amount || 0), 0);
           hasConfRev = true;
         }
         // Calculate incentive for each month in the year
         for (let m = 1; m <= 12; m++) {
           const monthStr = `${selectedYear}-${String(m).padStart(2, '0')}`;
-          const p = calculatePerformance(u.userId, monthStr, globalStaffList, globalAllReports, globalActualRevenues);
+          const p = calculatePerformance(u.userId, monthStr, globalStaffList, globalAllReports, globalActualRevenues, selectedCompany !== '전체' ? selectedCompany : undefined);
           if (p) uIncentive += p.incentive;
         }
-      }
-
-      // Pro-rate uConfRev and uIncentive if filtering by company
-      if (selectedCompany !== '전체' && totalUserEstRev > 0) {
-        const ratio = uEstRev / totalUserEstRev;
-        if (hasConfRev) uConfRev = Math.round(uConfRev * ratio);
-        uIncentive = Math.round(uIncentive * ratio);
-      } else if (selectedCompany !== '전체' && totalUserEstRev === 0 && u.company !== selectedCompany) {
-        uConfRev = 0;
-        uIncentive = 0;
       }
 
       totalEstimated += uEstRev;
