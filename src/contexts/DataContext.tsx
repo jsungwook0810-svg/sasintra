@@ -34,6 +34,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const uid = currentUser.userId;
     const isAdmin = currentUser.role === '관리자';
+    const isTeamLeader = currentUser.rank === '팀장';
+    const hasGlobalAccess = isAdmin || isTeamLeader;
 
     const qReports = query(collection(db, 'artifacts', appId, 'public', 'data', 'daily_reports'), where("userId", "==", uid));
     const unsubReports = onSnapshot(qReports, (snap) => {
@@ -60,7 +62,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setNotifications(data);
     });
 
-    const qRevenues = isAdmin 
+    const qRevenues = hasGlobalAccess 
       ? collection(db, 'artifacts', appId, 'public', 'data', 'actual_revenues')
       : query(collection(db, 'artifacts', appId, 'public', 'data', 'actual_revenues'), where("userId", "==", uid));
     
@@ -72,16 +74,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     let unsubAllReports: any;
     let unsubCorpCard: any;
 
-    if (isAdmin) {
+    if (hasGlobalAccess) {
       unsubStaff = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snap) => {
         setGlobalStaffList(snap.docs.map(d => d.data()));
       });
       unsubAllReports = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'daily_reports'), (snap) => {
         setGlobalAllReports(snap.docs.map(d => d.data()));
       });
-      unsubCorpCard = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'corp_card_usages'), (snap) => {
-        setCorpCardUsages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      });
+      if (isAdmin) {
+        unsubCorpCard = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'corp_card_usages'), (snap) => {
+          setCorpCardUsages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+      }
     }
 
     return () => {

@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { doc, setDoc, deleteDoc, getDoc, updateDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
 import { calculateAnnualLeave } from '@/lib/utils';
+import TeamLeaderEvaluation from './TeamLeaderEvaluation';
 
 export default function AdminStaff() {
   const { globalStaffList, allLeavesGlobal } = useData();
+  const { currentUser } = useAuth();
+  const isJungSungWook = currentUser?.name === '정성욱';
+  const isTeamLeader = currentUser?.rank === '팀장';
+
+  const [mainTab, setMainTab] = useState<'list' | 'evaluation'>(isJungSungWook ? 'list' : 'evaluation');
+
   const [name, setName] = useState('');
   const [joinDate, setJoinDate] = useState('');
   const [id, setId] = useState('');
@@ -180,22 +188,43 @@ export default function AdminStaff() {
   return (
     <div className="space-y-4">
       <div className="flex gap-2 mb-4">
+        {isJungSungWook && (
+          <button 
+            onClick={() => setMainTab('list')} 
+            className={`flex-1 py-3 rounded-xl font-bold transition-colors ${mainTab === 'list' ? 'bg-slate-800 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
+          >
+            직원 목록
+          </button>
+        )}
         <button 
-          onClick={() => setSubTab('register')} 
-          className={`flex-1 py-3 rounded-xl font-bold transition-colors ${subTab === 'register' ? 'bg-amber-500 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
+          onClick={() => setMainTab('evaluation')} 
+          className={`flex-1 py-3 rounded-xl font-bold transition-colors ${mainTab === 'evaluation' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
         >
-          직원 등록
-        </button>
-        <button 
-          onClick={() => setSubTab('manage')} 
-          className={`flex-1 py-3 rounded-xl font-bold transition-colors ${subTab === 'manage' ? 'bg-blue-500 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
-        >
-          직원정보관리
+          직원 평가
         </button>
       </div>
 
-      {subTab === 'register' && (
-        <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-t-[5px] border-amber-500">
+      {mainTab === 'evaluation' && <TeamLeaderEvaluation />}
+
+      {mainTab === 'list' && isJungSungWook && (
+        <>
+          <div className="flex gap-2 mb-4">
+            <button 
+              onClick={() => setSubTab('register')} 
+              className={`flex-1 py-3 rounded-xl font-bold transition-colors ${subTab === 'register' ? 'bg-amber-500 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
+            >
+              직원 등록
+            </button>
+            <button 
+              onClick={() => setSubTab('manage')} 
+              className={`flex-1 py-3 rounded-xl font-bold transition-colors ${subTab === 'manage' ? 'bg-blue-500 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
+            >
+              직원정보관리
+            </button>
+          </div>
+
+          {subTab === 'register' && (
+            <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-t-[5px] border-amber-500">
         <h2 className="text-lg text-amber-500 m-0 mb-4 font-bold">👤 직원 신규 등록</h2>
         
         <div className="mb-3">
@@ -549,6 +578,8 @@ export default function AdminStaff() {
           </div>
         );
       })()}
+      </>
+      )}
     </div>
   );
 }

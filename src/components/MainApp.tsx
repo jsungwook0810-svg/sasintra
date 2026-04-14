@@ -11,6 +11,7 @@ import EmployeeCalculator from './tabs/EmployeeCalculator';
 import LeaveManagement from './tabs/LeaveManagement';
 import CalendarView from './tabs/CalendarView';
 import Notices from './tabs/Notices';
+import TeamLeaderEvaluation from './tabs/TeamLeaderEvaluation';
 import { getKSTToday, KOR_HOLIDAYS } from '@/lib/utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
@@ -55,11 +56,13 @@ export default function MainApp() {
     prevNotifsRef.current = notifications.length;
   }, [notifications]);
   
+  const isTeamLeader = currentUser?.rank === '팀장';
+
   const tabs = isAdmin
     ? [
         { id: 'adminReportWrapper', label: '📊 통합 통계' },
         { id: 'adminViewSettlement', label: '💰 확정매출 입력' },
-        ...(isJungSungWook ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : []),
+        ...(isJungSungWook || isTeamLeader ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : []),
         { id: 'adminCorpCard', label: '💳 법인카드관리' },
         { id: 'subViewLeave', label: '🌴 휴가관리' },
         { id: 'subViewCal', label: '📅 일정달력' },
@@ -71,7 +74,8 @@ export default function MainApp() {
         { id: 'subViewLeave', label: '🌴 휴가관리' },
         { id: 'subViewCal', label: '📅 일정달력' },
         { id: 'subViewMyRevenue', label: '📊 매출관리' },
-        { id: 'subViewNotices', label: '📢 공지사항' }
+        { id: 'subViewNotices', label: '📢 공지사항' },
+        ...(isTeamLeader ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : [])
       ];
 
   const [activeTab, setActiveTab] = useState(tabs[0].id);
@@ -291,6 +295,7 @@ export default function MainApp() {
         {activeTab === 'subViewCal' && <CalendarView />}
         {activeTab === 'subViewMyRevenue' && <EmployeeRevenue />}
         {activeTab === 'subViewNotices' && <Notices />}
+        {activeTab === 'teamLeaderEvaluation' && <TeamLeaderEvaluation />}
       </div>
 
       {showProfileModal && (
