@@ -7,7 +7,7 @@ import MainApp from './components/MainApp';
 import SeasonalEffects from './components/SeasonalEffects';
 
 function AppContent() {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, loading, logout } = useAuth();
 
   if (loading) {
     return (
@@ -27,7 +27,7 @@ function AppContent() {
         <div className="text-4xl mb-4">🔒</div>
         <h2 className="text-xl font-bold text-slate-800 mb-2">접근 제한</h2>
         <p className="text-slate-500 text-sm">퇴사 처리된 계정입니다. 관리자에게 문의하세요.</p>
-        <button onClick={() => window.location.reload()} className="mt-6 bg-slate-100 text-slate-600 px-4 py-2 rounded-xl font-bold text-sm">처음으로</button>
+        <button onClick={() => { logout(); window.location.reload(); }} className="mt-6 bg-slate-100 text-slate-600 px-4 py-2 rounded-xl font-bold text-sm">처음으로</button>
       </div>
     );
   }

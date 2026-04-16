@@ -137,6 +137,7 @@ export default function AdminReports() {
     const missing: any[] = [];
 
     globalStaffList.forEach(u => {
+      if (u.isHidden) return;
       if (u.role === '관리자' || !u.approved) return;
       if (u.joinDate && u.joinDate > selectedDate) return;
       if (u.isResigned && (!u.resignDate || u.resignDate < selectedDate)) return;
@@ -249,7 +250,7 @@ export default function AdminReports() {
     let totalPen = 0;
     let totalInvPen = 0;
 
-    const staffStats = globalStaffList.filter(u => u.role !== '관리자').filter(u => {
+    const staffStats = globalStaffList.filter(u => u.role !== '관리자' && !u.isHidden).filter(u => {
       if (u.isResigned && u.resignDate) {
         if (periodType === 'month' && u.resignDate < selectedMonth + '-01') return false;
         if (periodType === 'year' && u.resignDate < selectedYear + '-01-01') return false;

@@ -25,27 +25,27 @@ export const reportStructure: Record<string, Record<string, string[]>> = {
 
 export const salaryData: Record<string, Record<string, { base: number, target: number, threshold: number, type: string }>> = {
   "누수팀": {
-    "사원": { base: 2500000, target: 6250000, threshold: 5900000, type: "tiered" },
-    "주임": { base: 2750000, target: 6870000, threshold: 6100000, type: "tiered" },
-    "대리": { base: 2916667, target: 7290000, threshold: 6300000, type: "tiered" },
-    "과장": { base: 3166667, target: 7910000, threshold: 6500000, type: "tiered" }
+    "사원": { base: 2500000, target: 5400000, threshold: 5400000, type: "new_tiered" },
+    "주임": { base: 2750000, target: 5700000, threshold: 5700000, type: "new_tiered" },
+    "대리": { base: 3000000, target: 6000000, threshold: 6000000, type: "new_tiered" },
+    "과장": { base: 3250000, target: 6500000, threshold: 6500000, type: "new_tiered" }
   },
   "재물팀": {
-    "사원": { base: 2300000, target: 5750000, threshold: 5750000, type: "fixed35" },
-    "주임": { base: 2400000, target: 6000000, threshold: 6000000, type: "fixed35" },
-    "대리": { base: 2500000, target: 6250000, threshold: 6250000, type: "fixed35" },
-    "과장": { base: 2600000, target: 6500000, threshold: 6500000, type: "fixed35" }
+    "사원": { base: 2300000, target: 5100000, threshold: 5100000, type: "new_tiered" },
+    "주임": { base: 2400000, target: 5400000, threshold: 5400000, type: "new_tiered" },
+    "대리": { base: 2600000, target: 5700000, threshold: 5700000, type: "new_tiered" },
+    "과장": { base: 2800000, target: 6000000, threshold: 6000000, type: "new_tiered" }
   },
   "간편심사": {
-    "사원": { base: 2300000, target: 5750000, threshold: 5750000, type: "fixed35" },
-    "주임": { base: 2400000, target: 6000000, threshold: 6000000, type: "fixed35" },
-    "대리": { base: 2500000, target: 6250000, threshold: 6250000, type: "fixed35" },
-    "과장": { base: 2600000, target: 6500000, threshold: 6500000, type: "fixed35" }
+    "사원": { base: 2300000, target: 5100000, threshold: 5100000, type: "new_tiered" },
+    "주임": { base: 2400000, target: 5400000, threshold: 5400000, type: "new_tiered" },
+    "대리": { base: 2600000, target: 5700000, threshold: 5700000, type: "new_tiered" },
+    "과장": { base: 2800000, target: 6000000, threshold: 6000000, type: "new_tiered" }
   },
   "재물심사": {
-    "사원": { base: 2300000, target: 5750000, threshold: 5750000, type: "mybrown" },
-    "주임": { base: 2400000, target: 6000000, threshold: 6000000, type: "mybrown" },
-    "대리": { base: 2500000, target: 6250000, threshold: 6250000, type: "mybrown" },
-    "과장": { base: 2600000, target: 6500000, threshold: 6500000, type: "mybrown" }
+    "사원": { base: 2300000, target: 5100000, threshold: 5100000, type: "new_tiered" },
+    "주임": { base: 2400000, target: 5400000, threshold: 5400000, type: "new_tiered" },
+    "대리": { base: 2600000, target: 5700000, threshold: 5700000, type: "new_tiered" },
+    "과장": { base: 2800000, target: 6000000, threshold: 6000000, type: "new_tiered" }
   }
 };

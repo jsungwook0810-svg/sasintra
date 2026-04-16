@@ -9,7 +9,7 @@ import TeamLeaderEvaluation from './TeamLeaderEvaluation';
 export default function AdminStaff() {
   const { globalStaffList, allLeavesGlobal } = useData();
   const { currentUser } = useAuth();
-  const isJungSungWook = currentUser?.name === '정성욱';
+  const isJungSungWook = currentUser?.name === '정성욱' || currentUser?.name === '테스트계정';
   const isTeamLeader = currentUser?.rank === '팀장';
 
   const [mainTab, setMainTab] = useState<'list' | 'evaluation'>(isJungSungWook ? 'list' : 'evaluation');
@@ -139,8 +139,8 @@ export default function AdminStaff() {
     return ['관리자'];
   };
 
-  const activeStaff = globalStaffList.filter(u => u.approved && !u.isResigned);
-  const resignedStaff = globalStaffList.filter(u => u.approved && u.isResigned);
+  const activeStaff = globalStaffList.filter(u => u.approved && !u.isResigned && !u.isHidden);
+  const resignedStaff = globalStaffList.filter(u => u.approved && u.isResigned && !u.isHidden);
 
   const rankWeight: Record<string, number> = {
     '부장': 1,

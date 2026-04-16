@@ -84,6 +84,7 @@ export default function CalendarView() {
         const targetStaffs = globalStaffList.filter(u => 
           u.approved && 
           u.role !== '관리자' && 
+          !u.isHidden &&
           !leaveUserIds.has(u.userId)
         );
         

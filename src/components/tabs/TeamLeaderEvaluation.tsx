@@ -20,7 +20,7 @@ export default function TeamLeaderEvaluation() {
 
   // Filter staff for 삼성 누수팀
   const targetStaff = useMemo(() => {
-    return globalStaffList.filter(u => u.company === '삼성' && u.role === '누수팀' && u.rank !== '팀장' && u.rank !== '관리자');
+    return globalStaffList.filter(u => u.company === '삼성' && u.role === '누수팀' && u.rank !== '팀장' && u.rank !== '관리자' && !u.isHidden);
   }, [globalStaffList]);
 
   const [isEditing, setIsEditing] = useState(false);

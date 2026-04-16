@@ -16,6 +16,7 @@ export default function AdminSettlement() {
 
   let staffCompanyPairs: any[] = [];
   globalStaffList.forEach(u => {
+    if (u.isHidden) return;
     if (u.rank === '팀장' || u.role === '관리자') return;
     if (u.joinDate && u.joinDate.substring(0, 7) > month) return;
 

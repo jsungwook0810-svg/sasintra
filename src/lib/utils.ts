@@ -201,15 +201,32 @@ export function calculatePerformance(uid: string, month: string, globalStaffList
   const finalRev = actRecs.length > 0 ? actRecs.reduce((sum, ar) => sum + ar.amount, 0) : mRev;
   
   let inc = 0;
-  if (finalRev >= conf.target) {
-    let rate = 0.35;
+  if (finalRev >= conf.threshold) {
+    // 2026-04-01 이후 새로운 인센티브 체계 적용
+    let baseRate = 0.41;
+    if (staff.rank === '주임') baseRate = 0.42;
+    else if (staff.rank === '대리') baseRate = 0.43;
+    else if (staff.rank === '과장') baseRate = 0.44;
+
     const comp = targetCompany && targetCompany !== '전체' ? targetCompany : staff.company;
-    if (comp === "마이브라운") {
-      rate = finalRev >= 9500000 ? 0.44 : (finalRev >= 8250000 ? 0.41 : (finalRev >= 7000000 ? 0.38 : 0.35));
-    } else if (staff.role === "누수팀") {
-      rate = finalRev >= 10000000 ? 0.44 : (finalRev >= 8750000 ? 0.41 : (finalRev >= 7500000 ? 0.38 : 0.35));
+    
+    let bonusThreshold = 8500000; // 재물팀, 마이브라운 기준
+    if (staff.role === "누수팀") {
+      bonusThreshold = 9500000; // 누수팀 기준
     }
-    inc = Math.floor((finalRev - conf.threshold) * rate);
+
+    if (finalRev > bonusThreshold) {
+      // 보너스 구간: 기준액 초과분 전체에 대해 (기본비율) 적용 + 보너스 기준 초과분에 대해 (가산비율 2%) 추가 적용
+      // 문서의 예시: 대리 매출 1000만원 시 (1000-600)*45% 가 아니라, 
+      // 문서의 정확한 예시: (1000-600)*45% 를 적용한다고 되어 있음. 
+      // "대리 매출이 1000만원 일시 인센기준 600만원 초과분의 기본비율(43%) + 가산비율(2%) 총 45%를 적용한다. (1000-600)*45%"
+      // 즉, 전체 초과분에 대해 45%를 적용하는 것임.
+      const totalRate = baseRate + 0.02;
+      inc = Math.floor((finalRev - conf.threshold) * totalRate);
+    } else {
+      // 기본 구간
+      inc = Math.floor((finalRev - conf.threshold) * baseRate);
+    }
   }
   
   return {

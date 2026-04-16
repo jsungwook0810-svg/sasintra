@@ -24,7 +24,7 @@ export default function MainApp() {
   const [newPw, setNewPw] = useState('');
   
   const isAdmin = currentUser?.role === '관리자';
-  const isJungSungWook = currentUser?.name === '정성욱';
+  const isJungSungWook = currentUser?.name === '정성욱' || currentUser?.name === '테스트계정';
 
   const prevNotifsRef = useRef<number>(notifications.length);
 
@@ -57,26 +57,44 @@ export default function MainApp() {
   }, [notifications]);
   
   const isTeamLeader = currentUser?.rank === '팀장';
+  const isTestAdmin = currentUser?.name === '테스트계정';
 
-  const tabs = isAdmin
-    ? [
-        { id: 'adminReportWrapper', label: '📊 통합 통계' },
-        { id: 'adminViewSettlement', label: '💰 확정매출 입력' },
-        ...(isJungSungWook || isTeamLeader ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : []),
-        { id: 'adminCorpCard', label: '💳 법인카드관리' },
-        { id: 'subViewLeave', label: '🌴 휴가관리' },
-        { id: 'subViewCal', label: '📅 일정달력' },
-        { id: 'subViewNotices', label: '📢 공지사항' }
-      ]
-    : [
-        { id: 'subViewReport', label: '📝 마감보고' },
-        { id: 'subViewCalculator', label: '💰 급여계산기' },
-        { id: 'subViewLeave', label: '🌴 휴가관리' },
-        { id: 'subViewCal', label: '📅 일정달력' },
-        { id: 'subViewMyRevenue', label: '📊 매출관리' },
-        { id: 'subViewNotices', label: '📢 공지사항' },
-        ...(isTeamLeader ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : [])
-      ];
+  let tabs = [];
+  
+  if (isTestAdmin) {
+    tabs = [
+      { id: 'adminReportWrapper', label: '📊 통합 통계' },
+      { id: 'adminViewSettlement', label: '💰 확정매출 입력' },
+      { id: 'adminViewMgmt', label: '👥 직원관리' },
+      { id: 'adminCorpCard', label: '💳 법인카드관리' },
+      { id: 'subViewReport', label: '📝 마감보고' },
+      { id: 'subViewCalculator', label: '💰 급여계산기' },
+      { id: 'subViewLeave', label: '🌴 휴가관리' },
+      { id: 'subViewCal', label: '📅 일정달력' },
+      { id: 'subViewMyRevenue', label: '📊 매출관리' },
+      { id: 'subViewNotices', label: '📢 공지사항' }
+    ];
+  } else if (isAdmin) {
+    tabs = [
+      { id: 'adminReportWrapper', label: '📊 통합 통계' },
+      { id: 'adminViewSettlement', label: '💰 확정매출 입력' },
+      ...(isJungSungWook || isTeamLeader ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : []),
+      { id: 'adminCorpCard', label: '💳 법인카드관리' },
+      { id: 'subViewLeave', label: '🌴 휴가관리' },
+      { id: 'subViewCal', label: '📅 일정달력' },
+      { id: 'subViewNotices', label: '📢 공지사항' }
+    ];
+  } else {
+    tabs = [
+      { id: 'subViewReport', label: '📝 마감보고' },
+      { id: 'subViewCalculator', label: '💰 급여계산기' },
+      { id: 'subViewLeave', label: '🌴 휴가관리' },
+      { id: 'subViewCal', label: '📅 일정달력' },
+      { id: 'subViewMyRevenue', label: '📊 매출관리' },
+      { id: 'subViewNotices', label: '📢 공지사항' },
+      ...(isTeamLeader ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : [])
+    ];
+  }
 
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [isNavOpen, setIsNavOpen] = useState(false);
