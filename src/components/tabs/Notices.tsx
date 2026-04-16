@@ -280,9 +280,47 @@ export default function Notices() {
               {selectedNotice.updatedAt && <span className="text-xs text-indigo-400 font-bold shrink-0">(수정됨)</span>}
             </div>
             
-            <div className="ql-snow mb-8 sm:mb-10 flex-1 overflow-y-auto">
+            <div className="mb-8 sm:mb-10 flex-1 overflow-y-auto">
+              <style>{`
+                .notice-content-body {
+                  font-family: inherit;
+                }
+                .notice-content-body p {
+                  min-height: 1.5rem;
+                }
+                .notice-content-body h1 {
+                  font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;
+                }
+                .notice-content-body h2 {
+                  font-size: 1.25rem; font-weight: bold; margin-bottom: 0.75rem;
+                }
+                .notice-content-body h3 {
+                  font-size: 1.125rem; font-weight: bold; margin-bottom: 0.5rem;
+                }
+                .notice-content-body ul, 
+                .notice-content-body ol {
+                  padding-left: 1.75rem;
+                  margin-bottom: 1rem;
+                }
+                .notice-content-body ul li {
+                  list-style-type: disc !important;
+                  margin-bottom: 0.25rem;
+                }
+                .notice-content-body ol li {
+                  list-style-type: decimal !important;
+                  margin-bottom: 0.25rem;
+                }
+                /* Quill sometimes removes native list styles and uses ::before context counters.
+                   By forcing list-style-type and disabling quill's custom pseudo-elements, 
+                   we let the native browser handle list rendering reliably. */
+                .notice-content-body ul li::before,
+                .notice-content-body ol li::before {
+                  display: none !important;
+                  content: none !important;
+                }
+              `}</style>
               <div 
-                className="ql-editor p-0 min-h-[200px] text-slate-700 leading-relaxed text-base sm:text-[1.05rem] break-words whitespace-pre-wrap [&_p]:min-h-[1.5rem] [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mb-3 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:ml-6 [&_ol]:mb-4 [&_li]:mb-1 [&_li]:pl-1"
+                className="notice-content-body text-slate-700 leading-relaxed text-base sm:text-[1.05rem] break-words"
                 dangerouslySetInnerHTML={{ __html: selectedNotice.content }}
               />
             </div>
