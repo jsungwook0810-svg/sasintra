@@ -169,8 +169,15 @@ export function calculatePerformance(uid: string, month: string, globalStaffList
     return { name: staff.name, revenue: 0, incentive: 0, netPay: 0, company: staff.company, role: staff.role, rank: staff.rank, reports: [], itemBreakdown: {} };
   }
   
-  const conf = (salaryData[staff.role] || salaryData["누수팀"])[staff.rank];
-  if (!conf) return null;
+  let conf = (salaryData[staff.role] || salaryData["누수팀"])[staff.rank];
+  if (!conf) {
+    if (staff.rank === '팀장') {
+      // Fallback for team leaders who previously submitted reports
+      conf = { base: 0, target: 99999999, threshold: 99999999, type: "none" };
+    } else {
+      return null;
+    }
+  }
 
   let mRev = 0;
   let reports = globalAllReports.filter(r => r.userId === uid && r.date.startsWith(month));

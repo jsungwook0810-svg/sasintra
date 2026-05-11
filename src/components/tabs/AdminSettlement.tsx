@@ -17,20 +17,23 @@ export default function AdminSettlement() {
   let staffCompanyPairs: any[] = [];
   globalStaffList.forEach(u => {
     if (u.isHidden) return;
-    if (u.rank === '팀장' || u.role === '관리자') return;
+    
+    const reportsThisMonth = globalAllReports.filter(r => r.userId === u.userId && r.date.startsWith(month));
+    const hasReportsThisMonth = reportsThisMonth.length > 0;
+    const hasRevenueThisMonth = globalActualRevenues.some(r => r.userId === u.userId && r.month === month && r.amount !== 0);
+
+    if (u.role === '관리자') return;
+    if (u.rank === '팀장' && !hasReportsThisMonth && !hasRevenueThisMonth) return;
+    
     if (u.joinDate && u.joinDate.substring(0, 7) > month) return;
 
-    const reportsThisMonth = globalAllReports.filter(r => r.userId === u.userId && r.date.startsWith(month));
     const companiesThisMonth = new Set(reportsThisMonth.map(r => getReportCompany(r, u)));
     companiesThisMonth.add(u.company); // Always include current company
-
-    const hasReportsThisMonth = reportsThisMonth.length > 0;
-    const hasRevenueThisMonth = globalActualRevenues.some(r => r.userId === u.userId && r.month === month);
 
     if (!u.approved && !hasReportsThisMonth && !hasRevenueThisMonth) return;
     if (u.isResigned) {
       const resignMonth = u.resignDate ? u.resignDate.substring(0, 7) : '';
-      if (resignMonth < month && !hasReportsThisMonth && !hasRevenueThisMonth) return;
+      if (resignMonth && resignMonth < month && !hasReportsThisMonth && !hasRevenueThisMonth) return;
     }
 
     companiesThisMonth.forEach(comp => {
