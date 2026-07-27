@@ -92,6 +92,20 @@ export default function AdminStaff() {
     }
   };
 
+  const resetPassword = async (user: any) => {
+    if (window.confirm(`${user.name} 님의 비밀번호를 '1234'로 초기화하시겠습니까?`)) {
+      try {
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', user.userId), {
+          password: '1234'
+        });
+        alert("✅ 비밀번호가 '1234'로 초기화되었습니다.");
+      } catch (error) {
+        console.error("Error resetting password:", error);
+        alert("비밀번호 초기화 중 오류가 발생했습니다.");
+      }
+    }
+  };
+
   const cancelResign = async (user: any) => {
     if (window.confirm(`${user.name} 님의 퇴사 처리를 취소하시겠습니까?`)) {
       try {
@@ -324,10 +338,11 @@ export default function AdminStaff() {
                           <b className="text-sm">{u.name}</b> 
                           <small className="text-slate-500 ml-1">({u.userId} / {u.rank})</small>
                         </span>
-                        <div className="flex gap-1.5">
-                          <button onClick={() => setViewLeavesStaff(u)} className="bg-emerald-500 text-white px-3 py-1.5 text-xs rounded-lg font-bold">연차</button>
-                          <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold">수정</button>
-                          <button onClick={() => requestResign(u)} className="bg-slate-800 text-white px-3 py-1.5 text-xs rounded-lg font-bold">퇴사</button>
+                        <div className="flex gap-1.5 flex-wrap justify-end mt-2 sm:mt-0">
+                          <button onClick={() => resetPassword(u)} className="bg-amber-100 text-amber-700 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-amber-200">PW초기화</button>
+                          <button onClick={() => setViewLeavesStaff(u)} className="bg-emerald-500 text-white px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-emerald-600">연차</button>
+                          <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-slate-50">수정</button>
+                          <button onClick={() => requestResign(u)} className="bg-slate-800 text-white px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-slate-700">퇴사</button>
                         </div>
                       </div>
                     </div>
@@ -395,10 +410,11 @@ export default function AdminStaff() {
                               <span className="ml-2 bg-slate-200 text-slate-600 text-[0.65rem] px-2 py-0.5 rounded-full font-bold">퇴사자</span>
                               {u.resignDate && <span className="ml-2 text-xs text-slate-400 font-medium">퇴사일: {u.resignDate}</span>}
                             </span>
-                            <div className="flex gap-1.5">
-                              <button onClick={() => setViewLeavesStaff(u)} className="bg-emerald-500 text-white px-3 py-1.5 text-xs rounded-lg font-bold">연차</button>
-                              <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold">수정</button>
-                              <button onClick={() => cancelResign(u)} className="bg-slate-400 text-white px-3 py-1.5 text-xs rounded-lg font-bold">퇴사취소</button>
+                            <div className="flex gap-1.5 flex-wrap justify-end mt-2 sm:mt-0">
+                              <button onClick={() => resetPassword(u)} className="bg-amber-100 text-amber-700 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-amber-200">PW초기화</button>
+                              <button onClick={() => setViewLeavesStaff(u)} className="bg-emerald-500 text-white px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-emerald-600">연차</button>
+                              <button onClick={() => openEditModal(u)} className="bg-transparent border-[1.5px] border-slate-300 text-slate-600 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-slate-50">수정</button>
+                              <button onClick={() => cancelResign(u)} className="bg-slate-400 text-white px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-slate-500">퇴사취소</button>
                               <button onClick={() => handleHardDelete(u.userId)} className="bg-rose-50 text-rose-500 hover:bg-rose-100 px-3 py-1.5 text-xs rounded-lg font-bold">영구삭제</button>
                             </div>
                           </div>

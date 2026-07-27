@@ -22,7 +22,7 @@ export default function AdminSettlement() {
     const hasReportsThisMonth = reportsThisMonth.length > 0;
     const hasRevenueThisMonth = globalActualRevenues.some(r => r.userId === u.userId && r.month === month && r.amount !== 0);
 
-    if (u.role === '관리자') return;
+    if (u.role === '관리자' && !hasReportsThisMonth && !hasRevenueThisMonth) return;
     if (u.rank === '팀장' && !hasReportsThisMonth && !hasRevenueThisMonth) return;
     
     if (u.joinDate && u.joinDate.substring(0, 7) > month) return;
