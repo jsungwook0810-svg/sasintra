@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
-import { getKSTMonth, getKSTToday, feeMap, getReportCompany, calculatePerformance } from '@/lib/utils';
+import { getKSTMonth, getKSTToday, feeMap, getReportCompany, calculatePerformance, formatFeeLabel } from '@/lib/utils';
 
 export default function AdminReports() {
-  const { globalStaffList, globalAllReports, globalActualRevenues, allLeavesGlobal } = useData();
+  const { globalStaffList, globalAllReports, globalActualRevenues, allLeavesGlobal, systemConfig } = useData();
+  const activeFeeMap = systemConfig?.feeMap || feeMap;
   const [periodType, setPeriodType] = useState<'day' | 'month' | 'year'>('day');
   const [selectedDate, setSelectedDate] = useState(getKSTToday());
   const [selectedMonth, setSelectedMonth] = useState(getKSTMonth());
@@ -885,7 +886,7 @@ export default function AdminReports() {
                   .sort(([catA], [catB]) => {
                     if (catA === '조사미결') return 1;
                     if (catB === '조사미결') return -1;
-                    const feeDiff = (feeMap[catB] || 0) - (feeMap[catA] || 0);
+                    const feeDiff = (activeFeeMap[catB] || 0) - (activeFeeMap[catA] || 0);
                     if (feeDiff !== 0) return feeDiff;
                     if (catA === '시설소유관리자') return -1;
                     if (catB === '시설소유관리자') return 1;
@@ -893,7 +894,21 @@ export default function AdminReports() {
                   })
                   .map(([category, values]: [string, any]) => (
                   <div key={category} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <h4 className="font-bold text-slate-800 mb-3 text-sm">{category}</h4>
+                    <h4 className="font-bold text-slate-800 mb-3 text-sm flex items-center justify-between flex-wrap gap-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{category}</span>
+                        {activeFeeMap[category] !== undefined && activeFeeMap[category] > 0 && (
+                          <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded">
+                            {formatFeeLabel(activeFeeMap[category])}
+                          </span>
+                        )}
+                      </div>
+                      {activeFeeMap[category] !== undefined && (
+                        <span className="text-[11px] font-medium text-slate-400">
+                          {activeFeeMap[category].toLocaleString()}원/건
+                        </span>
+                      )}
+                    </h4>
                     <div className="grid grid-cols-3 gap-2 text-center">
                       {category !== '조사미결' ? (
                         <>

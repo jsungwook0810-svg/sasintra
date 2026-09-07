@@ -38,17 +38,23 @@ const estimateAfterTax = (gross: number) => {
 
 export default function EmployeeCalculator() {
   const { currentUser } = useAuth();
-  const { allUserReports } = useData();
+  const { allUserReports, systemConfig } = useData();
   
-  const isAdminOrTest = currentUser?.name === '정성욱' || currentUser?.name === '테스트계정';
+  const isMasterOrAdmin = currentUser?.userId === 'snk12' || currentUser?.userId === 'testadmin' || (currentUser as any)?.isMaster || currentUser?.name === '정성욱' || currentUser?.rank === '팀장' || currentUser?.role === '관리자';
 
   const [revenueInput, setRevenueInput] = useState<number | ''>('');
   const [result, setResult] = useState<any>(null);
 
   // Simulation states
   const [simCompany, setSimCompany] = useState(currentUser?.company || '삼성');
-  const [simRole, setSimRole] = useState(currentUser?.role || '누수팀');
+  const [simRole, setSimRole] = useState(currentUser?.role === '간편심사' ? '재물팀' : (currentUser?.role || '재물팀'));
   const [simRank, setSimRank] = useState(currentUser?.rank || '사원');
+
+  const activeSalaryData = systemConfig?.salaryData || salaryData;
+  const activeFeeMap = systemConfig?.feeMap || feeMap;
+  const activeIncentiveRates = systemConfig?.incentiveRates || { '사원': 0.41, '주임': 0.42, '대리': 0.43, '과장': 0.44 };
+  const activeBonusRate = systemConfig?.bonusRate ?? 0.02;
+  const activeBonusThresholds = systemConfig?.bonusThresholds || { '누수팀': 9500000, '재물팀': 8500000, '마이브라운': 8500000 };
 
   useEffect(() => {
     // 본인의 이번 달 가매출 자동계산 (시뮬레이션 모드가 아닐 때 주로 참고)
@@ -57,44 +63,33 @@ export default function EmployeeCalculator() {
     allUserReports.filter(r => r.date.startsWith(curMonth)).forEach(r => {
       for (let g in r.data) {
         const d = r.data[g];
-        if (feeMap[g]) mRevenue += (d["종결"] || 0) * feeMap[g];
+        if (activeFeeMap[g]) mRevenue += (d["종결"] || 0) * activeFeeMap[g];
       }
     });
     setRevenueInput(mRevenue);
-  }, [allUserReports]);
+  }, [allUserReports, activeFeeMap]);
 
   const handleCalculate = () => {
     const rev = Number(revenueInput) || 0;
     
     // 시뮬레이션 모드면 선택한 값, 아니면 본인 직급값 사용
-    const targetRole = isAdminOrTest ? simRole : currentUser?.role || '누수팀';
-    const targetRank = isAdminOrTest ? simRank : currentUser?.rank || '사원';
+    const rawRole = isMasterOrAdmin ? simRole : currentUser?.role || '재물팀';
+    const targetRole = rawRole === '간편심사' ? '재물팀' : rawRole;
+    const targetRank = isMasterOrAdmin ? simRank : currentUser?.rank || '사원';
     
-    const roleData = salaryData[targetRole] || salaryData["누수팀"];
-    const conf = roleData[targetRank];
-    
-    if (!conf) {
-      alert("해당 직급의 급여 기준 데이터가 없습니다.");
-      return;
-    }
+    const roleData = activeSalaryData[targetRole] || activeSalaryData["누수팀"] || salaryData["누수팀"];
+    const conf = roleData?.[targetRank] || { base: 2300000, target: 6000000, threshold: 5600000, type: "normal" };
 
     let isEligible = rev >= conf.target;
     let rate = 0, inc = 0;
     
     if (isEligible) {
-      // 2026-04-01 바뀐 인센티브 체계
-      let baseRate = 0.41; // 기본(사원) 41%
-      if (targetRank === '주임') baseRate = 0.42;
-      else if (targetRank === '대리') baseRate = 0.43;
-      else if (targetRank === '과장') baseRate = 0.44;
-
-      let bonusThreshold = 8500000; // 재물팀/마이브라운/간편심사 기본
-      if (targetRole === "누수팀") {
-        bonusThreshold = 9500000; // 누수팀인 경우
-      }
+      // 마스터 설정 요율 또는 기본 요율 반영
+      const baseRate = activeIncentiveRates[targetRank] || 0.41;
+      const bonusThreshold = activeBonusThresholds[targetRole] || 8500000;
 
       if (rev > bonusThreshold) {
-        const totalRate = baseRate + 0.02; // 가산비율 2%
+        const totalRate = baseRate + activeBonusRate;
         rate = totalRate;
         inc = Math.floor((rev - conf.threshold) * totalRate);
       } else {
@@ -114,13 +109,13 @@ export default function EmployeeCalculator() {
       inc,
       net,
       tax: taxCalc,
-      simulatedLabel: isAdminOrTest ? `[시뮬레이션] ${simCompany} / ${simRole} / ${simRank}` : null
+      simulatedLabel: isMasterOrAdmin ? `[시뮬레이션] ${simCompany} / ${targetRole} / ${targetRank}` : null
     });
   };
 
   return (
     <div className="space-y-4">
-      {isAdminOrTest && (
+      {isMasterOrAdmin && (
         <div className="bg-indigo-50 p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-indigo-100">
           <h2 className="text-lg font-extrabold text-indigo-700 mb-4 flex items-center gap-2">
             <span>⚙️</span> 관리자 시뮬레이션 모드
@@ -138,7 +133,6 @@ export default function EmployeeCalculator() {
               <select value={simRole} onChange={e => setSimRole(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-sm bg-white outline-none">
                 <option value="누수팀">누수팀</option>
                 <option value="재물팀">재물팀</option>
-                <option value="간편심사">간편심사</option>
                 <option value="재물심사">재물심사</option>
               </select>
             </div>
@@ -160,7 +154,7 @@ export default function EmployeeCalculator() {
       <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
         <h2 className="text-lg font-bold mb-4 text-slate-800">💰 급여 계산기</h2>
         <div className="mb-4">
-          <label className="block text-sm font-bold text-slate-600 mb-2">매출액 입력 {isAdminOrTest ? '(테스트용 금액 입력)' : '(가매출 자동연동)'}</label>
+          <label className="block text-sm font-bold text-slate-600 mb-2">매출액 입력 {isMasterOrAdmin ? '(테스트용 금액 입력)' : '(가매출 자동연동)'}</label>
           <input
             type="number"
             value={revenueInput}

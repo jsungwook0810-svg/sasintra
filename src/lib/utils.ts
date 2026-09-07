@@ -4,6 +4,16 @@ import { KOR_HOLIDAYS, feeMap, salaryData, reportStructure } from "./constants";
 
 export { KOR_HOLIDAYS, feeMap, salaryData, reportStructure };
 
+export function formatFeeLabel(fee?: number): string {
+  if (!fee || fee <= 0) return '';
+  if (fee >= 10000) {
+    const manWon = fee / 10000;
+    const formatted = Number.isInteger(manWon) ? `${manWon}만원` : `${manWon.toFixed(1).replace(/\.0$/, '')}만원`;
+    return `(수수료 ${formatted})`;
+  }
+  return `(수수료 ${fee.toLocaleString()}원)`;
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -137,7 +147,7 @@ export function getReportCompany(report: any, staff: any) {
   if (report?.company) return report.company;
   
   const keys = Object.keys(report?.data || {});
-  if (keys.includes("골프용품") || keys.includes("가전제품") || keys.includes("홀인원") || keys.includes("시설소유관리자") || keys.includes("300만원 초과")) {
+  if (keys.includes("대인사고") || keys.includes("골프용품") || keys.includes("가전제품") || keys.includes("홀인원") || keys.includes("시설소유관리자") || keys.includes("300만원 초과")) {
     return "삼성";
   }
   if (keys.length > 0 && keys.every(k => k === "펫보험" || k === "조사미결")) {
@@ -148,17 +158,21 @@ export function getReportCompany(report: any, staff: any) {
 }
 
 export function getReportRole(report: any, staff: any) {
-  if (report?.role) return report.role;
+  if (report?.role) {
+    if (report.role === '간편심사') return '재물팀';
+    return report.role;
+  }
   
   const keys = Object.keys(report?.data || {});
   if (keys.includes("시설소유관리자")) return "누수팀";
-  if (keys.includes("골프용품") && !keys.includes("시설소유관리자")) return "재물팀";
-  if (keys.includes("펫보험") && !keys.includes("골프용품") && keys.length <= 2) {
-    if (staff?.role === "재물심사" || staff?.role === "재물팀") return staff.role;
+  if ((keys.includes("대인사고") || keys.includes("골프용품") || keys.includes("가전제품") || keys.includes("홀인원")) && !keys.includes("시설소유관리자")) return "재물팀";
+  if (keys.includes("펫보험") && !keys.includes("골프용품") && !keys.includes("대인사고") && keys.length <= 2) {
+    if (staff?.role === "재물심사" || staff?.role === "재물팀" || staff?.role === "간편심사") return staff.role === '간편심사' ? '재물팀' : staff.role;
     return "재물심사";
   }
   
-  return staff?.role || "기본 업무";
+  const staffRole = staff?.role === '간편심사' ? '재물팀' : staff?.role;
+  return staffRole || "기본 업무";
 }
 
 export function calculatePerformance(uid: string, month: string, globalStaffList: any[], globalAllReports: any[], globalActualRevenues: any[], targetCompany?: string) {
@@ -169,7 +183,8 @@ export function calculatePerformance(uid: string, month: string, globalStaffList
     return { name: staff.name, revenue: 0, incentive: 0, netPay: 0, company: staff.company, role: staff.role, rank: staff.rank, reports: [], itemBreakdown: {} };
   }
   
-  let conf = (salaryData[staff.role] || salaryData["누수팀"])[staff.rank];
+  const effectiveRole = staff.role === '간편심사' ? '재물팀' : staff.role;
+  let conf = (salaryData[effectiveRole] || salaryData["재물팀"] || salaryData["누수팀"])[staff.rank];
   if (!conf) {
     if (staff.rank === '팀장') {
       // Fallback for team leaders who previously submitted reports

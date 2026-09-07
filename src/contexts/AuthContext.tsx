@@ -37,6 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const saved = localStorage.getItem('sas_user_session') || sessionStorage.getItem('sas_user_session');
         if (saved) {
           const user = JSON.parse(saved);
+          if (user.company === '삼성' && user.role === '간편심사') {
+            user.role = '재물팀';
+          }
           setCurrentUser(user);
         }
       } catch (error) {
@@ -52,7 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (currentUser?.userId) {
       const unsubscribe = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.userId), (doc) => {
         if (doc.exists()) {
-          setCurrentUser(doc.data() as User);
+          const userData = doc.data() as User;
+          if (userData.company === '삼성' && userData.role === '간편심사') {
+            userData.role = '재물팀';
+          }
+          setCurrentUser(userData);
         } else {
           setCurrentUser(null);
           localStorage.removeItem('sas_user_session');
@@ -64,12 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser?.userId]);
 
   const login = (user: User, autoLogin: boolean) => {
-    if (autoLogin) {
-      localStorage.setItem('sas_user_session', JSON.stringify(user));
-    } else {
-      sessionStorage.setItem('sas_user_session', JSON.stringify(user));
+    const normalizedUser = { ...user };
+    if (normalizedUser.company === '삼성' && normalizedUser.role === '간편심사') {
+      normalizedUser.role = '재물팀';
     }
-    setCurrentUser(user);
+    if (autoLogin) {
+      localStorage.setItem('sas_user_session', JSON.stringify(normalizedUser));
+    } else {
+      sessionStorage.setItem('sas_user_session', JSON.stringify(normalizedUser));
+    }
+    setCurrentUser(normalizedUser);
   };
 
   const logout = () => {

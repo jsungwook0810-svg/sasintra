@@ -5,17 +5,23 @@ import { getKSTTime } from '@/lib/utils';
 
 export default function EmployeeRevenue() {
   const { currentUser } = useAuth();
-  const { globalActualRevenues, allUserReports } = useData();
+  const { globalActualRevenues, allUserReports, globalStaffList } = useData();
   
+  const isMaster = currentUser?.userId === 'snk12' || currentUser?.userId === 'testadmin' || (currentUser as any)?.isMaster || currentUser?.name === '정성욱' || currentUser?.rank === '팀장';
+  const [selectedUserId, setSelectedUserId] = useState(currentUser?.userId || '');
+
   const currentYear = getKSTTime().getFullYear().toString();
   const [year, setYear] = useState(currentYear);
+
+  const targetUserId = isMaster && selectedUserId ? selectedUserId : currentUser?.userId;
+  const targetUser = globalStaffList.find(u => u.userId === targetUserId) || currentUser;
 
   let tRev = 0;
   let maxM = "-";
   let maxRev = 0;
   const h: any[] = [];
 
-  const yearlyRevs = globalActualRevenues.filter(r => r.userId === currentUser?.userId && r.month.startsWith(year));
+  const yearlyRevs = globalActualRevenues.filter(r => r.userId === targetUserId && r.month.startsWith(year));
 
   for (let m = 12; m >= 1; m--) {
     const mStr = `${year}-${String(m).padStart(2, '0')}`;
@@ -39,7 +45,7 @@ export default function EmployeeRevenue() {
             <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-1">
               {acts.map((act, idx) => (
                 <div key={idx} className="flex justify-between text-xs text-slate-500">
-                  <span>{act.company || currentUser?.company || '기본'}</span>
+                  <span>{act.company || targetUser?.company || '기본'}</span>
                   <span>{act.amount.toLocaleString()}원</span>
                 </div>
               ))}
@@ -48,7 +54,7 @@ export default function EmployeeRevenue() {
         </div>
       );
     } else {
-      if (allUserReports.some(r => r.date.startsWith(mStr))) {
+      if (allUserReports.some(r => r.userId === targetUserId && r.date.startsWith(mStr))) {
         h.push(
           <div key={mStr} className="bg-slate-50 p-4 rounded-xl border border-slate-200 opacity-80 mb-3">
             <div className="flex justify-between items-center">
@@ -64,7 +70,35 @@ export default function EmployeeRevenue() {
   return (
     <div className="space-y-4">
       <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
-        <h2 className="text-base text-slate-800 m-0 mb-4 font-bold">📈 연간 매출 분석</h2>
+        <h2 className="text-base text-slate-800 m-0 mb-4 font-bold flex items-center justify-between">
+          <span>📈 연간 매출 분석</span>
+          {isMaster && (
+            <span className="text-xs bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+              👑 마스터 조회 모드
+            </span>
+          )}
+        </h2>
+
+        {isMaster && (
+          <div className="mb-4">
+            <label className="block text-sm font-bold text-slate-600 mb-2">조회 대상 직원</label>
+            <select
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              className="w-full p-3 border-[1.5px] border-amber-300 rounded-xl text-sm bg-amber-50/50 focus:border-amber-500 focus:bg-white outline-none font-medium"
+            >
+              <option value={currentUser?.userId}>본인 ({currentUser?.name} / {currentUser?.rank})</option>
+              {globalStaffList
+                .filter(u => u.approved && !u.isResigned && u.userId !== currentUser?.userId)
+                .map(u => (
+                  <option key={u.userId} value={u.userId}>
+                    {u.name} ({u.company} / {u.role} / {u.rank} / {u.userId})
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
+
         <div className="mb-4">
           <label className="block text-sm font-bold text-slate-600 mb-2">조회 연도</label>
           <select

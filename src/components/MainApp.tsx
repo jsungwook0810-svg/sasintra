@@ -12,19 +12,21 @@ import LeaveManagement from './tabs/LeaveManagement';
 import CalendarView from './tabs/CalendarView';
 import Notices from './tabs/Notices';
 import TeamLeaderEvaluation from './tabs/TeamLeaderEvaluation';
+import MasterSettings from './tabs/MasterSettings';
 import { getKSTToday, KOR_HOLIDAYS } from '@/lib/utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
 
 export default function MainApp() {
   const { currentUser, logout } = useAuth();
-  const { allUserReports, notices, allLeavesGlobal, notifications } = useData();
+  const { allUserReports, notices, allLeavesGlobal, notifications, systemConfig } = useData();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [newPw, setNewPw] = useState('');
   
-  const isAdmin = currentUser?.role === '관리자';
-  const isJungSungWook = currentUser?.name === '정성욱' || currentUser?.name === '테스트계정';
+  const isMaster = currentUser?.userId === 'snk12' || currentUser?.userId === 'testadmin' || (currentUser as any)?.isMaster || currentUser?.name === '정성욱';
+  const isTeamLeader = currentUser?.rank === '팀장' || currentUser?.role === '팀장';
+  const isAdmin = currentUser?.role === '관리자' || isMaster || isTeamLeader;
 
   const prevNotifsRef = useRef<number>(notifications.length);
 
@@ -55,48 +57,53 @@ export default function MainApp() {
     }
     prevNotifsRef.current = notifications.length;
   }, [notifications]);
-  
-  const isTeamLeader = currentUser?.rank === '팀장';
-  const isTestAdmin = currentUser?.name === '테스트계정';
 
-  let tabs = [];
+  const corpCardVisible = systemConfig?.menuVisibility?.corpCard === true;
+
+  interface TabItem {
+    id: string;
+    label: string;
+    category?: string;
+  }
+
+  let tabs: TabItem[] = [];
   
-  if (isTestAdmin) {
+  if (isMaster) {
     tabs = [
-      { id: 'adminReportWrapper', label: '📊 통합 통계' },
-      { id: 'adminViewSettlement', label: '💰 확정매출 입력' },
-      { id: 'adminViewMgmt', label: '👥 직원관리' },
-      { id: 'adminCorpCard', label: '💳 법인카드관리' },
-      { id: 'subViewReport', label: '📝 마감보고' },
-      { id: 'subViewCalculator', label: '💰 급여계산기' },
-      { id: 'subViewLeave', label: '🌴 휴가관리' },
-      { id: 'subViewCal', label: '📅 일정달력' },
-      { id: 'subViewMyRevenue', label: '📊 매출관리' },
-      { id: 'subViewNotices', label: '📢 공지사항' }
+      { id: 'masterSettings', label: '⚙️ 마스터 시스템 관리', category: '👑 마스터 총괄' },
+      { id: 'adminReportWrapper', label: '📊 통합 통계', category: '🏢 관리자 업무' },
+      { id: 'adminViewSettlement', label: '💰 확정매출 입력', category: '🏢 관리자 업무' },
+      { id: 'adminViewMgmt', label: '👥 직원관리', category: '🏢 관리자 업무' },
+      ...(corpCardVisible ? [{ id: 'adminCorpCard', label: '💳 법인카드관리', category: '🏢 관리자 업무' }] : []),
+      { id: 'subViewReport', label: '📝 마감보고', category: '💼 직원 실무 (체험/작성)' },
+      { id: 'subViewCalculator', label: '💰 급여계산기', category: '💼 직원 실무 (체험/작성)' },
+      { id: 'subViewMyRevenue', label: '📊 매출관리', category: '💼 직원 실무 (체험/작성)' },
+      { id: 'subViewLeave', label: '🌴 휴가관리', category: '📌 공통 업무' },
+      { id: 'subViewCal', label: '📅 일정달력', category: '📌 공통 업무' },
+      { id: 'subViewNotices', label: '📢 공지사항', category: '📌 공통 업무' }
     ];
   } else if (isAdmin) {
     tabs = [
-      { id: 'adminReportWrapper', label: '📊 통합 통계' },
-      { id: 'adminViewSettlement', label: '💰 확정매출 입력' },
-      ...(isJungSungWook || isTeamLeader ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : []),
-      ...(isJungSungWook ? [{ id: 'adminCorpCard', label: '💳 법인카드관리' }] : []),
-      { id: 'subViewLeave', label: '🌴 휴가관리' },
-      { id: 'subViewCal', label: '📅 일정달력' },
-      { id: 'subViewNotices', label: '📢 공지사항' }
+      { id: 'adminReportWrapper', label: '📊 통합 통계', category: '🏢 관리자 업무' },
+      { id: 'adminViewSettlement', label: '💰 확정매출 입력', category: '🏢 관리자 업무' },
+      { id: 'adminViewMgmt', label: '👥 직원관리', category: '🏢 관리자 업무' },
+      ...(corpCardVisible ? [{ id: 'adminCorpCard', label: '💳 법인카드관리', category: '🏢 관리자 업무' }] : []),
+      { id: 'subViewLeave', label: '🌴 휴가관리', category: '📌 공통 업무' },
+      { id: 'subViewCal', label: '📅 일정달력', category: '📌 공통 업무' },
+      { id: 'subViewNotices', label: '📢 공지사항', category: '📌 공통 업무' }
     ];
   } else {
     tabs = [
-      { id: 'subViewReport', label: '📝 마감보고' },
-      { id: 'subViewCalculator', label: '💰 급여계산기' },
-      { id: 'subViewLeave', label: '🌴 휴가관리' },
-      { id: 'subViewCal', label: '📅 일정달력' },
-      { id: 'subViewMyRevenue', label: '📊 매출관리' },
-      { id: 'subViewNotices', label: '📢 공지사항' },
-      ...(isTeamLeader ? [{ id: 'adminViewMgmt', label: '👥 직원관리' }] : [])
+      { id: 'subViewReport', label: '📝 마감보고', category: '💼 직원 실무' },
+      { id: 'subViewCalculator', label: '💰 급여계산기', category: '💼 직원 실무' },
+      { id: 'subViewLeave', label: '🌴 휴가관리', category: '📌 공통 업무' },
+      { id: 'subViewCal', label: '📅 일정달력', category: '📌 공통 업무' },
+      { id: 'subViewMyRevenue', label: '📊 매출관리', category: '💼 직원 실무' },
+      { id: 'subViewNotices', label: '📢 공지사항', category: '📌 공통 업무' }
     ];
   }
 
-  const [activeTab, setActiveTab] = useState(tabs[0].id);
+  const [activeTab, setActiveTab] = useState(isMaster ? 'masterSettings' : tabs[0].id);
   const [isNavOpen, setIsNavOpen] = useState(false);
 
   const todayStr = getKSTToday();
@@ -145,17 +152,37 @@ export default function MainApp() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
           </button>
-          <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
+          <h2 className="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
             {tabs.find(t => t.id === activeTab)?.label.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim()}
+            {isMaster && (
+              <span className="hidden sm:inline-flex bg-amber-100 border border-amber-300 text-amber-900 text-xs font-black px-2.5 py-0.5 rounded-full items-center gap-1">
+                👑 마스터
+              </span>
+            )}
           </h2>
         </div>
         
-        {/* Notification Bell */}
-        <div className="relative">
-          <button 
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors relative"
-          >
+        {/* Notification Bell & Quick Master Button */}
+        <div className="flex items-center gap-2">
+          {isMaster && (
+            <button
+              onClick={() => setActiveTab('masterSettings')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-sm border ${
+                activeTab === 'masterSettings'
+                  ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-amber-200'
+                  : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+              }`}
+            >
+              <span>⚙️</span>
+              <span className="hidden sm:inline">마스터 설정</span>
+            </button>
+          )}
+
+          <div className="relative">
+            <button 
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors relative"
+            >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
             </svg>
@@ -212,6 +239,7 @@ export default function MainApp() {
           )}
         </div>
       </div>
+      </div>
 
       {/* Navigation Drawer Overlay */}
       {isNavOpen && (
@@ -222,13 +250,20 @@ export default function MainApp() {
       )}
 
       {/* Navigation Drawer */}
-      <div className={`fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isNavOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed top-0 left-0 bottom-0 w-80 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isNavOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         
         {/* Drawer Header: User Profile */}
-        <div className="bg-slate-900 text-white p-6 flex flex-col gap-5">
+        <div className="bg-slate-900 text-white p-6 flex flex-col gap-4">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <div className="font-extrabold text-xl tracking-tight">{currentUser?.name}님</div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-xl tracking-tight">{currentUser?.name}님</span>
+                {isMaster && (
+                  <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full">
+                    👑 마스터
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-slate-400 mt-1.5 font-medium flex items-center gap-2">
                 <span className="bg-slate-800 px-2 py-0.5 rounded-md text-slate-300">{currentUser?.company}</span>
                 <span>{currentUser?.role}</span>
@@ -250,31 +285,49 @@ export default function MainApp() {
           </button>
         </div>
         
-        <div className="flex-1 overflow-y-auto py-4">
-          <nav className="flex flex-col gap-1 px-4">
-            {tabs.map(t => (
-              <div
-                key={t.id}
-                onClick={() => {
-                  setActiveTab(t.id);
-                  setIsNavOpen(false);
-                }}
-                className={`p-4 rounded-xl text-sm font-bold cursor-pointer transition-all duration-200 ${
-                  activeTab === t.id
-                    ? 'bg-indigo-50 text-indigo-600'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                }`}
-              >
-                {t.label}
-              </div>
-            ))}
+        <div className="flex-1 overflow-y-auto py-3">
+          <nav className="flex flex-col gap-1 px-3">
+            {tabs.map((t, idx) => {
+              const showCategoryHeader = t.category && (idx === 0 || tabs[idx - 1].category !== t.category);
+              const isMasterTab = t.id === 'masterSettings';
+
+              return (
+                <React.Fragment key={t.id}>
+                  {showCategoryHeader && (
+                    <div className="text-[11px] font-black text-slate-400 px-3 pt-3 pb-1 tracking-wider">
+                      {t.category}
+                    </div>
+                  )}
+                  <div
+                    onClick={() => {
+                      setActiveTab(t.id);
+                      setIsNavOpen(false);
+                    }}
+                    className={`p-3.5 rounded-xl text-sm font-bold cursor-pointer transition-all duration-200 flex items-center justify-between ${
+                      activeTab === t.id
+                        ? isMasterTab
+                          ? 'bg-amber-400 text-slate-950 shadow-sm'
+                          : 'bg-indigo-50 text-indigo-600 shadow-sm'
+                        : isMasterTab
+                        ? 'bg-amber-50/70 text-amber-900 hover:bg-amber-100 border border-amber-200/50'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                    }`}
+                  >
+                    <span>{t.label}</span>
+                    {activeTab === t.id && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                    )}
+                  </div>
+                </React.Fragment>
+              );
+            })}
           </nav>
         </div>
 
         <div className="p-4 border-t border-slate-100">
           <button
             onClick={logout}
-            className="w-full p-4 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-100 transition-colors flex items-center justify-center gap-2"
+            className="w-full p-3.5 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-100 transition-colors flex items-center justify-center gap-2 text-sm"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
@@ -303,6 +356,7 @@ export default function MainApp() {
       )}
 
       <div className="flex-1">
+        {activeTab === 'masterSettings' && <MasterSettings />}
         {activeTab === 'adminViewSettlement' && <AdminSettlement />}
         {activeTab === 'adminReportWrapper' && <AdminReports />}
         {activeTab === 'adminViewMgmt' && <AdminStaff />}

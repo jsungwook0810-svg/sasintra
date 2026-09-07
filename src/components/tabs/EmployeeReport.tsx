@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { getKSTToday, getKSTMonth, feeMap, reportStructure, getReportCompany, getReportRole } from '@/lib/utils';
+import { getKSTToday, getKSTMonth, feeMap, reportStructure, getReportCompany, getReportRole, formatFeeLabel } from '@/lib/utils';
 import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
 
 export default function EmployeeReport() {
   const { currentUser } = useAuth();
-  const { allUserReports } = useData();
+  const { allUserReports, systemConfig } = useData();
   
   const [reportDate, setReportDate] = useState(getKSTToday());
   const [memo, setMemo] = useState('');
@@ -16,8 +16,12 @@ export default function EmployeeReport() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  const isMasterOrLeader = currentUser?.userId === 'snk12' || currentUser?.userId === 'testadmin' || (currentUser as any)?.isMaster || currentUser?.rank === '팀장' || currentUser?.role === '관리자';
+  const [masterDept, setMasterDept] = useState<'삼성-재물팀' | '삼성-누수팀' | '마이브라운-재물심사'>('삼성-재물팀');
+
   const curMonth = getKSTMonth();
   let tRec = 0, tCom = 0, tPen = 0, mRevenue = 0;
+  const activeFeeMap = systemConfig?.feeMap || feeMap;
   
   const sortedReportsForMonth = [...allUserReports]
     .filter(r => r.date.startsWith(curMonth))
@@ -31,14 +35,22 @@ export default function EmployeeReport() {
       tRec += (d["접수"] || 0); 
       tCom += (d["종결"] || 0); 
       if (d["미결"] !== undefined) latestPending[g] = d["미결"];
-      if (feeMap[g]) mRevenue += (d["종결"] || 0) * feeMap[g];
+      if (activeFeeMap[g]) mRevenue += (d["종결"] || 0) * activeFeeMap[g];
     }
   });
 
   tPen = Object.values(latestPending).reduce((a, b) => a + b, 0);
 
-  const baseGroups = currentUser?.company && currentUser?.role && currentUser.role !== '관리자'
-    ? (reportStructure[currentUser.company]?.[currentUser.role] || ["기본 업무"])
+  const effectiveCompany = (isMasterOrLeader && (!currentUser?.company || currentUser.company === 'SAS' || currentUser.role === '관리자' || currentUser.role === '팀장'))
+    ? (masterDept.startsWith('삼성') ? '삼성' : '마이브라운')
+    : (currentUser?.company || '삼성');
+
+  const effectiveRole = (isMasterOrLeader && (!currentUser?.company || currentUser.company === 'SAS' || currentUser.role === '관리자' || currentUser.role === '팀장'))
+    ? (masterDept === '삼성-누수팀' ? '누수팀' : masterDept === '삼성-재물팀' ? '재물팀' : '재물심사')
+    : (currentUser?.role === '간편심사' ? '재물팀' : currentUser?.role);
+
+  const baseGroups = effectiveCompany && effectiveRole && effectiveRole !== '관리자'
+    ? (reportStructure[effectiveCompany]?.[effectiveRole] || ["기본 업무"])
     : [];
   const groups = [...baseGroups, "조사미결"];
 
@@ -50,7 +62,7 @@ export default function EmployeeReport() {
       });
       setFormData(initialData);
     }
-  }, [currentUser, editingId]);
+  }, [currentUser, editingId, masterDept]);
 
   const handleInputChange = (group: string, indicator: string, value: string) => {
     setFormData(prev => ({
@@ -84,7 +96,7 @@ export default function EmployeeReport() {
     }
 
     let reportCompany = currentUser?.company || "전체";
-    let reportRole = currentUser?.role || "기본 업무";
+    let reportRole = currentUser?.role === '간편심사' ? '재물팀' : (currentUser?.role || "기본 업무");
 
     if (currentEditingId) {
       const existingReport = allUserReports.find(r => r.id === currentEditingId);
@@ -92,6 +104,9 @@ export default function EmployeeReport() {
         reportCompany = getReportCompany(existingReport, currentUser);
         reportRole = getReportRole(existingReport, currentUser);
       }
+    }
+    if (reportRole === '간편심사') {
+      reportRole = '재물팀';
     }
 
     const data = {
@@ -131,13 +146,22 @@ export default function EmployeeReport() {
         editData[g] = { "접수": 0, "종결": 0, "미결": 0 };
       });
     } else {
-      const reportGroups = Object.keys(r.data);
-      reportGroups.forEach(g => {
+      groups.forEach(g => {
         editData[g] = {
-          "접수": r.data[g]?.["접수"] || 0,
-          "종결": r.data[g]?.["종결"] || 0,
-          "미결": r.data[g]?.["미결"] || 0
+          "접수": r.data?.[g]?.["접수"] || 0,
+          "종결": r.data?.[g]?.["종결"] || 0,
+          "미결": r.data?.[g]?.["미결"] || 0
         };
+      });
+      const reportGroups = Object.keys(r.data || {});
+      reportGroups.forEach(g => {
+        if (!editData[g]) {
+          editData[g] = {
+            "접수": r.data[g]?.["접수"] || 0,
+            "종결": r.data[g]?.["종결"] || 0,
+            "미결": r.data[g]?.["미결"] || 0
+          };
+        }
       });
     }
     
@@ -167,6 +191,55 @@ export default function EmployeeReport() {
 
   return (
     <div className="space-y-6">
+      {isMasterOrLeader && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-50 border border-amber-300/70 p-4 rounded-[22px] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">👑</span>
+            <div>
+              <div className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                마스터 부서별 마감보고 항목 확인 & 전환
+                <span className="bg-amber-200 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full">마스터 전용</span>
+              </div>
+              <div className="text-[11px] text-amber-800/80">
+                각 부서 직원이 실제로 보게 되는 항목 및 단가 양식을 전환하여 바로 확인하고 보고를 작성해볼 수 있습니다.
+              </div>
+            </div>
+          </div>
+          <div className="flex bg-white p-1 rounded-xl border border-amber-200 shadow-sm gap-1 self-start sm:self-auto">
+            <button
+              onClick={() => setMasterDept('삼성-누수팀')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                masterDept === '삼성-누수팀'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              삼성 (누수팀)
+            </button>
+            <button
+              onClick={() => setMasterDept('삼성-재물팀')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                masterDept === '삼성-재물팀'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              삼성 (재물팀 통합)
+            </button>
+            <button
+              onClick={() => setMasterDept('마이브라운-재물심사')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                masterDept === '마이브라운-재물심사'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              마이브라운
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-blue-500"></div>
         <div className="font-extrabold text-slate-800 text-xl mb-6 tracking-tight flex items-center gap-2">
@@ -206,7 +279,16 @@ export default function EmployeeReport() {
                 gPen = gLatestPending;
                 return (
                   <tr key={g} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="text-left font-bold text-indigo-600 pl-4 p-3 border-b border-slate-100 w-[40%]">{g}</td>
+                    <td className="text-left font-bold text-indigo-600 pl-4 p-3 border-b border-slate-100">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{g}</span>
+                        {activeFeeMap[g] !== undefined && activeFeeMap[g] > 0 && (
+                          <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded">
+                            {formatFeeLabel(activeFeeMap[g])}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="text-center p-3 border-b border-slate-100 font-medium text-slate-600">{gRec}</td>
                     <td className="text-center p-3 border-b border-slate-100 font-bold text-emerald-600">{gCom}</td>
                     <td className="text-center p-3 border-b border-slate-100 font-medium text-slate-600">{gPen}</td>
@@ -236,10 +318,19 @@ export default function EmployeeReport() {
         <div className="space-y-6">
           {Object.keys(formData).map(gName => (
             <div key={gName} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-              <div className="flex justify-between items-center border-b border-slate-200/60 pb-3 mb-4">
-                <span className="text-indigo-600 font-extrabold text-base tracking-tight">{gName}</span>
-                {feeMap[gName] !== undefined && (
-                  <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">단가: {feeMap[gName].toLocaleString()}원</span>
+              <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-200/60 pb-3 mb-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-indigo-600 font-extrabold text-base tracking-tight">{gName}</span>
+                  {activeFeeMap[gName] !== undefined && activeFeeMap[gName] > 0 && (
+                    <span className="text-xs font-black text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-2 py-0.5 rounded-lg shadow-2xs">
+                      {formatFeeLabel(activeFeeMap[gName])}
+                    </span>
+                  )}
+                </div>
+                {activeFeeMap[gName] !== undefined && (
+                  <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                    종결 {activeFeeMap[gName].toLocaleString()}원
+                  </span>
                 )}
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -291,12 +382,22 @@ export default function EmployeeReport() {
         <div className="flex flex-col gap-4">
           {sortedReports.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(r => {
             let sum = 0;
-            for (let k in r.data) if (feeMap[k]) sum += (r.data[k].종결 || 0) * feeMap[k];
+            for (let k in r.data) if (activeFeeMap[k]) sum += (r.data[k].종결 || 0) * activeFeeMap[k];
             
             const details = Object.keys(r.data).map(k => {
               const d = r.data[k];
               if (d['접수'] || d['종결'] || d['미결']) {
-                return <div key={k} className="mt-1.5 pl-2 text-sm"><span className="font-bold text-slate-700">• {k}</span> : 접수 {d['접수'] || 0} / 종결 <span className="text-emerald-600 font-bold">{d['종결'] || 0}</span> / 미결 {d['미결'] || 0}</div>;
+                return (
+                  <div key={k} className="mt-1.5 pl-2 text-sm flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-slate-700">• {k}</span>
+                    {activeFeeMap[k] !== undefined && activeFeeMap[k] > 0 && (
+                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-100">
+                        {formatFeeLabel(activeFeeMap[k])}
+                      </span>
+                    )}
+                    <span>: 접수 {d['접수'] || 0} / 종결 <span className="text-emerald-600 font-bold">{d['종결'] || 0}</span> / 미결 {d['미결'] || 0}</span>
+                  </div>
+                );
               }
               return null;
             });

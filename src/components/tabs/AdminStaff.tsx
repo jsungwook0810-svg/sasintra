@@ -124,7 +124,8 @@ export default function AdminStaff() {
   const openEditModal = (u: any) => {
     setEditStaff(u);
     setEditCompany(u.company || '삼성');
-    setEditRole(u.role || '누수팀');
+    const role = (u.company === '삼성' && u.role === '간편심사') ? '재물팀' : (u.role || '누수팀');
+    setEditRole(role);
     setEditRank(u.rank || '사원');
   };
 
@@ -148,9 +149,10 @@ export default function AdminStaff() {
   };
 
   const getRoles = (c: string) => {
-    if (c === '삼성') return ['누수팀', '재물팀', '간편심사', '관리자'];
-    if (c === '마이브라운') return ['재물심사', '관리자'];
-    return ['관리자'];
+    if (c === 'SAS') return ['팀장', '관리자'];
+    if (c === '삼성') return ['누수팀', '재물팀', '팀장', '관리자'];
+    if (c === '마이브라운') return ['재물심사', '팀장', '관리자'];
+    return ['팀장', '관리자'];
   };
 
   const activeStaff = globalStaffList.filter(u => u.approved && !u.isResigned && !u.isHidden);
@@ -175,14 +177,27 @@ export default function AdminStaff() {
   };
 
   const groupedStaff = activeStaff.reduce((acc, user) => {
-    const key = `${user.company}|${user.role}`;
+    if (user.rank === '팀장' || user.role === '팀장' || user.role === '관리자') {
+      const key = `팀장|총괄`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push({ ...user, role: '팀장' });
+      return acc;
+    }
+    const role = (user.company === '삼성' && user.role === '간편심사') ? '재물팀' : user.role;
+    const key = `${user.company}|${role}`;
     if (!acc[key]) acc[key] = [];
-    acc[key].push(user);
+    acc[key].push({ ...user, role });
     return acc;
   }, {} as Record<string, any[]>);
 
   Object.keys(groupedStaff).forEach(key => {
     groupedStaff[key] = sortUsers(groupedStaff[key]);
+  });
+
+  const sortedGroupKeys = Object.keys(groupedStaff).sort((a, b) => {
+    if (a === '팀장|총괄') return -1;
+    if (b === '팀장|총괄') return 1;
+    return a.localeCompare(b);
   });
 
   const sortedResignedStaff = sortUsers(resignedStaff);
@@ -309,9 +324,10 @@ export default function AdminStaff() {
             })}
           </div>
 
-          {Object.keys(groupedStaff).sort().map(key => {
+          {sortedGroupKeys.map(key => {
             const [comp, r] = key.split('|');
             const users = groupedStaff[key];
+            const isLeaderSection = key === '팀장|총괄';
             
             const currentPage = pageMap[key] || 1;
             const itemsPerPage = 5;
@@ -320,10 +336,18 @@ export default function AdminStaff() {
             const paginatedUsers = users.slice(startIndex, startIndex + itemsPerPage);
 
             return (
-              <div key={key} className="bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-black/5">
+              <div key={key} className={`bg-white p-5 rounded-[20px] shadow-[0_4px_15px_rgba(0,0,0,0.05)] border ${isLeaderSection ? 'border-amber-300 ring-1 ring-amber-100 bg-amber-50/10' : 'border-black/5'}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                   <h2 className="text-lg m-0 font-bold text-slate-800 flex items-center gap-2">
-                    <span className="text-blue-500">🏢</span> {comp} - {r}
+                    {isLeaderSection ? (
+                      <>
+                        <span className="text-amber-500">👑</span> 팀장 (총괄 관리)
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-blue-500">🏢</span> {comp} - {r}
+                      </>
+                    )}
                   </h2>
                   <div className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
                     총 {users.length}명 <span className="mx-1 text-slate-300">|</span> {getRankCounts(users)}
@@ -332,7 +356,7 @@ export default function AdminStaff() {
                 
                 <div className="flex flex-col gap-3">
                   {paginatedUsers.map(u => (
-                    <div key={u.userId} className="bg-white p-4 rounded-xl border border-slate-200 border-l-[4px] border-l-blue-500 shadow-sm">
+                    <div key={u.userId} className={`bg-white p-4 rounded-xl border border-slate-200 border-l-[4px] ${isLeaderSection ? 'border-l-amber-500 shadow-amber-100/50' : 'border-l-blue-500'} shadow-sm`}>
                       <div className="flex justify-between items-center">
                         <span>
                           <b className="text-sm">{u.name}</b> 
