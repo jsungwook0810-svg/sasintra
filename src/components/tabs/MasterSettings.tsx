@@ -8,7 +8,7 @@ export default function MasterSettings() {
   const { currentUser } = useAuth();
   const { systemConfig, updateSystemConfig, resetSystemConfigToDefault } = useData();
 
-  const [activeSubTab, setActiveSubTab] = useState<'menus' | 'salary' | 'incentive' | 'fees' | 'reports'>('menus');
+  const [activeSubTab, setActiveSubTab] = useState<'menus' | 'salary' | 'fees' | 'reports'>('menus');
   const [selectedDept, setSelectedDept] = useState<'누수팀' | '재물팀' | '재물심사'>('누수팀');
 
   // Local draft state
@@ -80,7 +80,8 @@ export default function MasterSettings() {
       ...prev,
       bonusThresholds: {
         ...prev.bonusThresholds,
-        [dept]: value
+        [dept]: value,
+        ...(dept === '재물심사' ? { '마이브라운': value } : {})
       }
     }));
   };
@@ -223,16 +224,6 @@ export default function MasterSettings() {
             <span>💵</span> 직급별 급여 & 인센티브
           </button>
           <button
-            onClick={() => setActiveSubTab('incentive')}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
-              activeSubTab === 'incentive'
-                ? 'bg-amber-400 text-slate-950 shadow-md scale-105'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
-            <span>📈</span> 인센티브 요율 & 보너스
-          </button>
-          <button
             onClick={() => setActiveSubTab('fees')}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
               activeSubTab === 'fees'
@@ -354,7 +345,7 @@ export default function MasterSettings() {
 
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-900 space-y-2">
             <p>기본 비율은 같은 직급의 모든 부서에 공통 적용됩니다. 수정 후 하단의 ‘설정 저장하기’를 눌러주세요.</p>
-            <p>보너스 기준을 <b>초과</b>하면 인센기준 초과분 전체에 기본비율 + 가산율을 적용합니다. 보너스 기준과 가산율은 ‘인센티브 요율 &amp; 보너스’에서 수정합니다.</p>
+            <p>보너스 기준을 <b>초과</b>하면 인센기준 초과분 전체에 기본비율 + 가산율을 적용합니다. 보너스 기준과 가산율은 아래에서 함께 수정합니다.</p>
             <p className="text-xs">현재 이 설정은 직원 급여계산기에 적용됩니다. 관리자 정산은 별도 기준을 사용합니다.</p>
             <button type="button" disabled={isSaving} onClick={loadApril2026Policy} className="px-3 py-2 bg-white border border-blue-200 rounded-lg font-bold text-xs disabled:opacity-50">
               2026년 4월 기준 불러오기 (저장 전 미리보기)
@@ -426,50 +417,6 @@ export default function MasterSettings() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
-
-      {/* Tab 3: Incentive & Bonus */}
-      {activeSubTab === 'incentive' && (
-        <div className="bg-white p-6 rounded-[22px] shadow-sm border border-slate-200 space-y-6">
-          <div>
-            <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-              <span>📈</span> 인센티브 요율 및 보너스 가산 체계 관리
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              2026-04-01 개정 인센티브 체계의 직급별 기본 지급율과 보너스 초과 달성 기준액을 수정할 수 있습니다.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 기본 요율 */}
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
-              <h3 className="font-extrabold text-slate-800 text-sm mb-4 flex items-center gap-1.5">
-                <span>🎯</span> 직급별 기본 인센티브 지급율 (%)
-              </h3>
-              <div className="space-y-3">
-                {ranks.map(rank => {
-                  const ratePercent = Number(((draftConfig.incentiveRates[rank] ?? 0.41) * 100).toFixed(2));
-                  return (
-                    <div key={rank} className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-700">{rank} 지급율</span>
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          step={0.1}
-                          min={0}
-                          max={100}
-                          value={ratePercent}
-                          onChange={e => handleIncentiveRateChange(rank, Number(e.target.value))}
-                          className="w-20 p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold text-center"
-                        />
-                        <span className="text-xs font-bold text-slate-500">%</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* 보너스 구간 및 가산율 */}
             <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-200">
@@ -488,11 +435,12 @@ export default function MasterSettings() {
                       step={0.5}
                       min={0}
                       max={20}
+                      aria-label="보너스 가산율 (%p)"
                       value={Number((draftConfig.bonusRate * 100).toFixed(2))}
                       onChange={e => setDraftConfig(prev => ({ ...prev, bonusRate: Number(e.target.value) / 100 }))}
                       className="w-20 p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold text-center bg-white"
                     />
-                    <span className="text-xs font-bold text-slate-500">%</span>
+                    <span className="text-xs font-bold text-slate-500">%p</span>
                   </div>
                 </div>
 
@@ -505,12 +453,12 @@ export default function MasterSettings() {
                         <input
                           type="number"
                           step={100000}
-                          value={draftConfig.bonusThresholds['누수팀'] || 9500000}
+                          value={draftConfig.bonusThresholds['누수팀'] ?? 9500000}
                           onChange={e => handleBonusThresholdChange('누수팀', Number(e.target.value))}
                           className="w-32 p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold bg-white"
                         />
                         <span className="text-xs text-slate-500 font-bold">
-                          ({((draftConfig.bonusThresholds['누수팀'] || 9500000) / 10000).toLocaleString()}만원)
+                          ({((draftConfig.bonusThresholds['누수팀'] ?? 9500000) / 10000).toLocaleString()}만원)
                         </span>
                       </div>
                     </div>
@@ -521,12 +469,12 @@ export default function MasterSettings() {
                         <input
                           type="number"
                           step={100000}
-                          value={draftConfig.bonusThresholds['재물팀'] || 8500000}
+                          value={draftConfig.bonusThresholds['재물팀'] ?? 8500000}
                           onChange={e => handleBonusThresholdChange('재물팀', Number(e.target.value))}
                           className="w-32 p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold bg-white"
                         />
                         <span className="text-xs text-slate-500 font-bold">
-                          ({((draftConfig.bonusThresholds['재물팀'] || 8500000) / 10000).toLocaleString()}만원)
+                          ({((draftConfig.bonusThresholds['재물팀'] ?? 8500000) / 10000).toLocaleString()}만원)
                         </span>
                       </div>
                     </div>
@@ -537,12 +485,12 @@ export default function MasterSettings() {
                         <input
                           type="number"
                           step={100000}
-                          value={draftConfig.bonusThresholds['마이브라운'] || 8500000}
-                          onChange={e => handleBonusThresholdChange('마이브라운', Number(e.target.value))}
+                          value={draftConfig.bonusThresholds['재물심사'] ?? draftConfig.bonusThresholds['마이브라운'] ?? 8500000}
+                          onChange={e => handleBonusThresholdChange('재물심사', Number(e.target.value))}
                           className="w-32 p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold bg-white"
                         />
                         <span className="text-xs text-slate-500 font-bold">
-                          ({((draftConfig.bonusThresholds['마이브라운'] || 8500000) / 10000).toLocaleString()}만원)
+                          ({((draftConfig.bonusThresholds['재물심사'] ?? draftConfig.bonusThresholds['마이브라운'] ?? 8500000) / 10000).toLocaleString()}만원)
                         </span>
                       </div>
                     </div>
@@ -550,7 +498,6 @@ export default function MasterSettings() {
                 </div>
               </div>
             </div>
-          </div>
         </div>
       )}
 
