@@ -4,9 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { getKSTMonth } from '@/lib/utils';
 import { parseRevenueAmount, summarizeRevenue } from '@/lib/revenue';
+import { isRevenueAdmin, canEditRevenue } from '@/lib/revenueAccess';
 import { db, appId } from '@/lib/firebase';
 
 interface RevenueEditor {
+  userId: string;
   id: string;
   month: string;
   company: string;
@@ -28,17 +30,17 @@ export default function EmployeeRevenue() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  const canViewStaff = currentUser?.role === '관리자' || currentUser?.role === '팀장' ||
-    currentUser?.rank === '팀장' || currentUser?.userId === 'snk12' ||
-    currentUser?.userId === 'testadmin' || Boolean((currentUser as any)?.isMaster);
+  const canViewStaff = isRevenueAdmin(currentUser);
   const userId = (canViewStaff ? selectedUserId : currentUser?.userId) || currentUser?.userId || '';
   const isOwn = userId === currentUser?.userId;
+  const canEdit = canEditRevenue(currentUser, userId);
+  const targetUser = isOwn ? currentUser : globalStaffList.find(user => user.userId === userId);
   const year = month.slice(0, 4);
   const summary = summarizeRevenue(globalActualRevenues, userId, year);
   const selectedTotal = summary.months.find(row => row.month === month);
   const monthRecords = globalActualRevenues.filter(r => r.userId === userId && r.month === month);
-  const ownCompany = currentUser?.company || '기본';
-  const hasCurrentCompany = monthRecords.some(r => (r.company || ownCompany) === ownCompany);
+  const targetCompany = targetUser?.company || '기본';
+  const hasCurrentCompany = monthRecords.some(r => (r.company || targetCompany) === targetCompany);
   const maxAmount = Math.max(1, ...summary.months.map(row => row.amount));
   const money = (amount: number) => amount.toLocaleString('ko-KR') + '원';
   const ready = revenueStatus === 'ready';
@@ -52,11 +54,13 @@ export default function EmployeeRevenue() {
   };
 
   const openEditor = (record?: any) => {
-    if (!isOwn || !ready || saving || month > currentMonth || !currentUser) return;
+    if (!canEdit || !targetUser || !ready || saving || month > currentMonth || !currentUser) return;
+    if (record && (record.userId !== userId || record.month !== month)) return;
     setEditor({
-      id: record?.id || `${currentUser.userId}_${month}_${ownCompany}`,
+      userId,
+      id: record?.id || `${userId}_${month}_${targetCompany}`,
       month,
-      company: record?.company || ownCompany,
+      company: record?.company || targetCompany,
       exists: Boolean(record),
       originalAmount: record?.amount,
       originalUpdatedAt: record?.updatedAt
@@ -68,7 +72,8 @@ export default function EmployeeRevenue() {
 
   const saveRevenue = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (savingRef.current || !editor || !isOwn || !currentUser || !ready) return;
+    if (savingRef.current || !editor || !currentUser || !ready ||
+        editor.userId !== userId || !canEditRevenue(currentUser, editor.userId)) return;
     const amount = parseRevenueAmount(amountInput);
     if (amount === null) {
       setError('매출은 0 이상의 원 단위 정수로 입력해주세요.');
@@ -88,7 +93,7 @@ export default function EmployeeRevenue() {
         const snapshot = await transaction.get(ref);
         const previous = snapshot.data();
         if (editor.exists) {
-          if (!snapshot.exists() || previous?.userId !== currentUser.userId ||
+          if (!snapshot.exists() || previous?.userId !== editor.userId ||
               previous?.month !== editor.month ||
               previous?.amount !== editor.originalAmount ||
               previous?.updatedAt !== editor.originalUpdatedAt) {
@@ -98,13 +103,13 @@ export default function EmployeeRevenue() {
           throw new Error('conflict');
         }
         transaction.set(ref, {
-          userId: currentUser.userId,
+          userId: editor.userId,
           month: editor.month,
           company: editor.company,
           amount,
           updatedAt: Date.now(),
           updatedBy: currentUser.userId,
-          source: 'employee',
+          source: canViewStaff ? 'admin' : 'employee',
           ...(!snapshot.exists() ? { createdAt: Date.now() } : {})
         }, { merge: true });
       });
@@ -127,7 +132,7 @@ export default function EmployeeRevenue() {
     <div className="space-y-4">
       <section className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <h2 className="text-lg font-extrabold text-slate-800">📊 매출관리</h2>
-        <p className="text-sm text-slate-500 mt-1">월별 본인 매출을 입력하고 월·연간 합계를 확인하세요.</p>
+        <p className="text-sm text-slate-500 mt-1">{canViewStaff ? '직원을 선택해 월별 매출을 조회·수정하고 월·연간 합계를 확인하세요.' : '본인의 월별 매출을 입력하고 월·연간 합계를 확인하세요.'}</p>
         <div className="grid sm:grid-cols-2 gap-4 mt-5">
           {canViewStaff && (
             <label className="text-sm font-bold text-slate-600">
@@ -172,7 +177,7 @@ export default function EmployeeRevenue() {
       {ready && (
         <section className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <h3 className="font-bold text-slate-800">{month} 매출 입력 내역</h3>
-          {!isOwn && <p className="text-sm text-slate-500 mt-2">직원 매출은 조회만 가능합니다. 수정은 직원 본인이 진행합니다.</p>}
+          {!isOwn && canViewStaff && <p className="text-sm text-slate-500 mt-2">{targetUser?.name}님의 매출을 조회·수정 중입니다. 저장한 금액은 해당 직원의 매출에 반영됩니다.</p>}
           <div className="space-y-3 mt-4">
             {monthRecords.map(record => (
               <div key={record.id} className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl">
@@ -180,19 +185,19 @@ export default function EmployeeRevenue() {
                   <p className="font-bold text-sm">{record.company || '기존 매출'}</p>
                   <p className="text-lg font-extrabold text-slate-800">{money(Number(record.amount) || 0)}</p>
                 </div>
-                {isOwn && month <= currentMonth && <button type="button" disabled={saving}
+                {canEdit && month <= currentMonth && <button type="button" disabled={saving}
                   onClick={() => openEditor(record)} className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold disabled:opacity-50">수정</button>}
               </div>
             ))}
             {monthRecords.length === 0 && <p className="text-sm text-slate-500">이 달의 매출을 입력해주세요. 매출이 없는 달은 0원으로 저장할 수 있습니다.</p>}
           </div>
-          {isOwn && !hasCurrentCompany && !editor && month <= currentMonth && (
+          {canEdit && !hasCurrentCompany && !editor && month <= currentMonth && (
             <button type="button" onClick={() => openEditor()} disabled={saving}
               className="mt-4 w-full p-3 bg-blue-600 text-white font-bold rounded-xl disabled:opacity-50">
-              {monthRecords.length ? `${ownCompany} 매출 입력` : '이번 달 매출 입력'}
+              {monthRecords.length ? `${targetCompany} 매출 입력` : '이번 달 매출 입력'}
             </button>
           )}
-          {editor && isOwn && (
+          {editor && canEdit && (
             <form onSubmit={saveRevenue} className="mt-4 p-4 border border-blue-200 bg-blue-50/40 rounded-xl space-y-3">
               <label className="block text-sm font-bold text-slate-700">
                 {editor.month} · {editor.company} 매출 금액 (원)

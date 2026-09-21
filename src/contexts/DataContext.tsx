@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
 import { useAuth } from './AuthContext';
+import { isRevenueAdmin } from '@/lib/revenueAccess';
 import { SystemConfig, DEFAULT_SYSTEM_CONFIG } from '@/types';
 
 interface DataContextType {
@@ -116,7 +117,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setNotifications(data);
     });
 
-    const qRevenues = hasGlobalAccess 
+    const qRevenues = isRevenueAdmin(currentUser) 
       ? collection(db, 'artifacts', appId, 'public', 'data', 'actual_revenues')
       : query(collection(db, 'artifacts', appId, 'public', 'data', 'actual_revenues'), where("userId", "==", uid));
     
