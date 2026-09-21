@@ -240,55 +240,51 @@ export default function MasterSettings() {
                 <span>📱</span> 메뉴 노출 관리 (숨김 / 되살리기)
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                현재 사용하지 않는 메뉴를 숨겨두고, 추후 필요할 때 원클릭으로 다시 활성화할 수 있습니다.
+                버튼을 누르면 즉시 저장되어 모든 계정에 반영됩니다. 메뉴를 숨겨도 기존 데이터는 삭제되지 않습니다.
               </p>
             </div>
           </div>
 
           <div className="divide-y divide-slate-100">
-            {/* 법인카드 관리 */}
-            <div className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-lg">
-                  💳
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-slate-800 text-base">법인카드 관리 메뉴</span>
-                    {draftConfig.menuVisibility.corpCard ? (
-                      <span className="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-0.5 rounded-full">
-                        현재: 활성화 (표시 중)
-                      </span>
-                    ) : (
-                      <span className="bg-slate-100 text-slate-600 text-xs font-black px-2.5 py-0.5 rounded-full">
-                        현재: 비활성화 (숨김)
-                      </span>
-                    )}
+            {[
+              { key: 'corpCard', icon: '💳', label: '법인카드 관리', description: '관리자 및 마스터의 법인카드 관리 메뉴를 표시하거나 숨깁니다.' },
+              { key: 'notices', icon: '📢', label: '공지사항', description: '모든 계정의 공지사항 메뉴와 상단 공지 안내를 표시하거나 숨깁니다.' },
+              { key: 'leave', icon: '🌴', label: '휴가관리', description: '모든 계정의 휴가관리 메뉴를 표시하거나 숨깁니다. 기존 휴가 기록은 유지됩니다.' },
+              { key: 'calendar', icon: '📅', label: '일정달력', description: '모든 계정의 일정달력 메뉴를 표시하거나 숨깁니다. 기존 일정은 유지됩니다.' }
+            ].map(menu => {
+              const visible = draftConfig.menuVisibility[menu.key] === true;
+              return (
+                <div key={menu.key} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 shrink-0 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-lg">
+                      {menu.icon}
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-extrabold text-slate-800 text-base">{menu.label}</span>
+                        <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${visible ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
+                          {visible ? '현재: 표시 중' : '현재: 숨김'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 max-w-xl">{menu.description}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1 max-w-xl">
-                    현재 요청에 따라 메뉴 목록에서 숨김 처리되어 있습니다. 활성화 시 관리자 및 마스터 화면의 메뉴에 &apos;💳 법인카드관리&apos; 탭이 즉시 다시 나타납니다.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 sm:self-center">
-                <button
-                  disabled={isSaving}
-                  onClick={() => handleMenuToggle('corpCard', draftConfig.menuVisibility.corpCard)}
-                  className={`px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 shadow-sm ${
-                    draftConfig.menuVisibility.corpCard
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-label={`${menu.label} 메뉴 표시`}
+                    aria-checked={visible}
+                    disabled={isSaving}
+                    onClick={() => handleMenuToggle(menu.key, visible)}
+                    className={`px-4 py-2.5 rounded-xl font-black text-xs transition-all shrink-0 shadow-sm disabled:opacity-50 ${visible
                       ? 'bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-600 border border-slate-300'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
-                  }`}
-                >
-                  {draftConfig.menuVisibility.corpCard ? (
-                    <><span>👁️‍🗨️</span> 메뉴 다시 숨기기</>
-                  ) : (
-                    <><span>✨</span> 숨긴 메뉴 다시 되살리기 (표시)</>
-                  )}
-                </button>
-              </div>
-            </div>
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'}`}
+                  >
+                    {visible ? '메뉴 숨기기' : '메뉴 되살리기 (표시)'}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

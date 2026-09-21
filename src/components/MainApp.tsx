@@ -17,8 +17,12 @@ import { getKSTToday, KOR_HOLIDAYS } from '@/lib/utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
 
-// Temporarily hidden for all roles; keep the screens and data for later use.
-const HIDDEN_TAB_IDS = new Set(['subViewNotices', 'subViewLeave', 'subViewCal']);
+// Menu visibility is controlled in Master Settings; screens and data are retained.
+const TAB_VISIBILITY_KEYS: Record<string, string> = {
+  subViewNotices: 'notices',
+  subViewLeave: 'leave',
+  subViewCal: 'calendar'
+};
 
 export default function MainApp() {
   const { currentUser, logout } = useAuth();
@@ -106,10 +110,19 @@ export default function MainApp() {
     ];
   }
 
-  tabs = tabs.filter(tab => !HIDDEN_TAB_IDS.has(tab.id));
+  tabs = tabs.filter(tab => {
+    const key = TAB_VISIBILITY_KEYS[tab.id];
+    return !key || systemConfig.menuVisibility[key] === true;
+  });
 
   const [activeTab, setActiveTab] = useState(isMaster ? 'masterSettings' : tabs[0].id);
   const [isNavOpen, setIsNavOpen] = useState(false);
+
+  // If a menu is hidden while someone is viewing it, return to their first visible menu.
+  const visibleActiveTab = tabs.some(tab => tab.id === activeTab) ? activeTab : tabs[0].id;
+  useEffect(() => {
+    if (activeTab !== visibleActiveTab) setActiveTab(visibleActiveTab);
+  }, [activeTab, visibleActiveTab]);
 
   const todayStr = getKSTToday();
   const hasReportToday = allUserReports.some(r => r.date === todayStr);
@@ -158,7 +171,7 @@ export default function MainApp() {
             </svg>
           </button>
           <h2 className="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-            {tabs.find(t => t.id === activeTab)?.label.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim()}
+            {tabs.find(t => t.id === visibleActiveTab)?.label.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim()}
             {isMaster && (
               <span className="hidden sm:inline-flex bg-amber-100 border border-amber-300 text-amber-900 text-xs font-black px-2.5 py-0.5 rounded-full items-center gap-1">
                 👑 마스터
@@ -173,7 +186,7 @@ export default function MainApp() {
             <button
               onClick={() => setActiveTab('masterSettings')}
               className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-sm border ${
-                activeTab === 'masterSettings'
+                visibleActiveTab === 'masterSettings'
                   ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-amber-200'
                   : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
               }`}
@@ -309,7 +322,7 @@ export default function MainApp() {
                       setIsNavOpen(false);
                     }}
                     className={`p-3.5 rounded-xl text-sm font-bold cursor-pointer transition-all duration-200 flex items-center justify-between ${
-                      activeTab === t.id
+                      visibleActiveTab === t.id
                         ? isMasterTab
                           ? 'bg-amber-400 text-slate-950 shadow-sm'
                           : 'bg-indigo-50 text-indigo-600 shadow-sm'
@@ -319,7 +332,7 @@ export default function MainApp() {
                     }`}
                   >
                     <span>{t.label}</span>
-                    {activeTab === t.id && (
+                    {visibleActiveTab === t.id && (
                       <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
                     )}
                   </div>
@@ -351,7 +364,7 @@ export default function MainApp() {
         </div>
       )}
 
-      {!HIDDEN_TAB_IDS.has('subViewNotices') && unreadNotice && (
+      {systemConfig.menuVisibility.notices === true && unreadNotice && (
         <div 
           onClick={() => setActiveTab('subViewNotices')}
           className="mb-4 p-4 rounded-xl text-sm font-bold flex items-center gap-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)] cursor-pointer bg-red-50 text-red-600 border border-red-200 animate-pulse"
@@ -361,18 +374,18 @@ export default function MainApp() {
       )}
 
       <div className="flex-1">
-        {activeTab === 'masterSettings' && <MasterSettings />}
-        {activeTab === 'adminViewSettlement' && <AdminSettlement />}
-        {activeTab === 'adminReportWrapper' && <AdminReports />}
-        {activeTab === 'adminViewMgmt' && <AdminStaff />}
-        {activeTab === 'adminCorpCard' && <AdminCorpCard />}
-        {activeTab === 'subViewReport' && <EmployeeReport />}
-        {activeTab === 'subViewCalculator' && <EmployeeCalculator />}
-        {activeTab === 'subViewLeave' && <LeaveManagement />}
-        {activeTab === 'subViewCal' && <CalendarView />}
-        {activeTab === 'subViewMyRevenue' && <EmployeeRevenue />}
-        {activeTab === 'subViewNotices' && <Notices />}
-        {activeTab === 'teamLeaderEvaluation' && <TeamLeaderEvaluation />}
+        {visibleActiveTab === 'masterSettings' && <MasterSettings />}
+        {visibleActiveTab === 'adminViewSettlement' && <AdminSettlement />}
+        {visibleActiveTab === 'adminReportWrapper' && <AdminReports />}
+        {visibleActiveTab === 'adminViewMgmt' && <AdminStaff />}
+        {visibleActiveTab === 'adminCorpCard' && <AdminCorpCard />}
+        {visibleActiveTab === 'subViewReport' && <EmployeeReport />}
+        {visibleActiveTab === 'subViewCalculator' && <EmployeeCalculator />}
+        {visibleActiveTab === 'subViewLeave' && <LeaveManagement />}
+        {visibleActiveTab === 'subViewCal' && <CalendarView />}
+        {visibleActiveTab === 'subViewMyRevenue' && <EmployeeRevenue />}
+        {visibleActiveTab === 'subViewNotices' && <Notices />}
+        {visibleActiveTab === 'teamLeaderEvaluation' && <TeamLeaderEvaluation />}
       </div>
 
       {showProfileModal && (

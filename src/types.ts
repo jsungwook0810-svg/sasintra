@@ -29,6 +29,9 @@ export interface SystemConfig {
   bonusThresholds: Record<string, number>;
   menuVisibility: {
     corpCard: boolean;
+    notices: boolean;
+    leave: boolean;
+    calendar: boolean;
     [key: string]: boolean;
   };
 }
@@ -79,6 +82,9 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
     '재물심사': 8500000
   },
   menuVisibility: {
-    corpCard: false // 법인카드 관리 기본 숨김
+    corpCard: false, // 법인카드 관리 기본 숨김
+    notices: false,
+    leave: false,
+    calendar: false
   }
 };
