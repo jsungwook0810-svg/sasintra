@@ -270,6 +270,7 @@ export default function MasterSettings() {
 
           <div className="divide-y divide-slate-100">
             {[
+              { key: 'settlement', icon: '💰', label: '확정매출 입력 (관리자)', description: '기존 관리자 입력 메뉴입니다. 기본은 숨김이며, 직원은 매출관리에서 본인 매출을 직접 입력합니다.' },
               { key: 'corpCard', icon: '💳', label: '법인카드 관리', description: '관리자 및 마스터의 법인카드 관리 메뉴를 표시하거나 숨깁니다.' },
               { key: 'notices', icon: '📢', label: '공지사항', description: '모든 계정의 공지사항 메뉴와 상단 공지 안내를 표시하거나 숨깁니다.' },
               { key: 'leave', icon: '🌴', label: '휴가관리', description: '모든 계정의 휴가관리 메뉴를 표시하거나 숨깁니다. 기존 휴가 기록은 유지됩니다.' },

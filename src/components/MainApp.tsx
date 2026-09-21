@@ -19,6 +19,7 @@ import { db, appId } from '@/lib/firebase';
 
 // Menu visibility is controlled in Master Settings; screens and data are retained.
 const TAB_VISIBILITY_KEYS: Record<string, string> = {
+  adminViewSettlement: 'settlement',
   subViewNotices: 'notices',
   subViewLeave: 'leave',
   subViewCal: 'calendar'
@@ -93,6 +94,7 @@ export default function MainApp() {
     tabs = [
       { id: 'adminReportWrapper', label: '📊 통합 통계', category: '🏢 관리자 업무' },
       { id: 'adminViewSettlement', label: '💰 확정매출 입력', category: '🏢 관리자 업무' },
+      { id: 'subViewMyRevenue', label: '📊 매출관리', category: '🏢 관리자 업무' },
       { id: 'adminViewMgmt', label: '👥 직원관리', category: '🏢 관리자 업무' },
       ...(corpCardVisible ? [{ id: 'adminCorpCard', label: '💳 법인카드관리', category: '🏢 관리자 업무' }] : []),
       { id: 'subViewLeave', label: '🌴 휴가관리', category: '📌 공통 업무' },

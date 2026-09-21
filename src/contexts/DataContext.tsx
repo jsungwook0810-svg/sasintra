@@ -10,6 +10,7 @@ interface DataContextType {
   globalStaffList: any[];
   globalAllReports: any[];
   globalActualRevenues: any[];
+  revenueStatus: 'loading' | 'ready' | 'error';
   myMemos: any[];
   notices: any[];
   corpCardUsages: any[];
@@ -28,6 +29,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [globalStaffList, setGlobalStaffList] = useState<any[]>([]);
   const [globalAllReports, setGlobalAllReports] = useState<any[]>([]);
   const [globalActualRevenues, setGlobalActualRevenues] = useState<any[]>([]);
+  const [revenueStatus, setRevenueStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [myMemos, setMyMemos] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
   const [corpCardUsages, setCorpCardUsages] = useState<any[]>([]);
@@ -118,8 +120,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       ? collection(db, 'artifacts', appId, 'public', 'data', 'actual_revenues')
       : query(collection(db, 'artifacts', appId, 'public', 'data', 'actual_revenues'), where("userId", "==", uid));
     
-    const unsubRevenues = onSnapshot(qRevenues, (snap) => {
+    setRevenueStatus('loading');
+    setGlobalActualRevenues([]);
+    const unsubRevenues = onSnapshot(qRevenues, { includeMetadataChanges: true }, (snap) => {
       setGlobalActualRevenues(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setRevenueStatus(snap.metadata.fromCache ? 'loading' : 'ready');
+    }, (error) => {
+      console.error('Revenue load failed:', error);
+      setRevenueStatus('error');
     });
 
     let unsubStaff: any;
@@ -169,6 +177,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       globalStaffList,
       globalAllReports,
       globalActualRevenues,
+      revenueStatus,
       myMemos,
       notices,
       corpCardUsages,

@@ -28,6 +28,7 @@ export interface SystemConfig {
   bonusRate: number;
   bonusThresholds: Record<string, number>;
   menuVisibility: {
+    settlement: boolean;
     corpCard: boolean;
     notices: boolean;
     leave: boolean;
@@ -82,6 +83,7 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
     '재물심사': 8500000
   },
   menuVisibility: {
+    settlement: false,
     corpCard: false, // 법인카드 관리 기본 숨김
     notices: false,
     leave: false,
