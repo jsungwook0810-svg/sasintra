@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { getKSTMonth, feeMap, salaryData } from '@/lib/utils';
+import { calculateIncentive } from '@/lib/incentive';
 
 const estimateAfterTax = (gross: number) => {
   // 2024~2025년 기준 대략적인 4대보험 요율 적용
@@ -80,29 +81,19 @@ export default function EmployeeCalculator() {
     const roleData = activeSalaryData[targetRole] || activeSalaryData["누수팀"] || salaryData["누수팀"];
     const conf = roleData?.[targetRank] || { base: 2300000, target: 6000000, threshold: 5600000, type: "normal" };
 
-    let isEligible = rev >= conf.target;
-    let rate = 0, inc = 0;
-    
-    if (isEligible) {
-      // 마스터 설정 요율 또는 기본 요율 반영
-      const baseRate = activeIncentiveRates[targetRank] || 0.41;
-      const bonusThreshold = activeBonusThresholds[targetRole] || 8500000;
+    const { eligible: isEligible, rate, incentive: inc } = calculateIncentive(
+      rev,
+      conf.threshold,
+      activeIncentiveRates[targetRank] ?? 0.41,
+      activeBonusThresholds[targetRole] ?? 8500000,
+      activeBonusRate
+    );
 
-      if (rev > bonusThreshold) {
-        const totalRate = baseRate + activeBonusRate;
-        rate = totalRate;
-        inc = Math.floor((rev - conf.threshold) * totalRate);
-      } else {
-        rate = baseRate;
-        inc = Math.floor((rev - conf.threshold) * baseRate);
-      }
-    }
-    
     const net = (conf.base + inc);
     const taxCalc = estimateAfterTax(net);
     
     setResult({
-      target: conf.target,
+      target: conf.threshold,
       isEligible,
       rate,
       base: conf.base,
@@ -180,7 +171,7 @@ export default function EmployeeCalculator() {
 
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 text-sm text-slate-600 relative z-10">
             <div className="flex justify-between items-center mb-2.5">
-              <span className="font-medium">✔️ 인센티브 목표매출</span> 
+              <span className="font-medium">✔️ 인센티브 시작 기준액</span> 
               <b className="text-slate-800">{result.target.toLocaleString()}원</b>
             </div>
             <div className="flex justify-between items-center mb-2.5">
@@ -189,7 +180,7 @@ export default function EmployeeCalculator() {
             </div>
             <div className="flex justify-between items-center mb-2.5">
               <span className="font-medium">✔️ 적용 요율 <span className="text-[10px] text-slate-400 font-normal">(개편안 적용)</span></span> 
-              <b className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">{result.isEligible ? (result.rate * 100).toFixed(0) + '%' : '0%'}</b>
+              <b className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">{result.isEligible ? Number((result.rate * 100).toFixed(2)) + '%' : '0%'}</b>
             </div>
             <div className="w-full h-px bg-slate-200 my-3"></div>
             <div className="flex justify-between items-center mb-2.5">

@@ -48,7 +48,7 @@ export default function MasterSettings() {
     }
   };
 
-  const handleSalaryChange = (dept: string, rank: string, field: 'base' | 'target' | 'threshold', value: number) => {
+  const handleSalaryChange = (dept: string, rank: string, field: 'base' | 'threshold', value: number) => {
     setDraftConfig(prev => ({
       ...prev,
       salaryData: {
@@ -57,7 +57,8 @@ export default function MasterSettings() {
           ...prev.salaryData[dept],
           [rank]: {
             ...prev.salaryData[dept]?.[rank],
-            [field]: value
+            [field]: value,
+            ...(field === 'threshold' ? { target: value } : {})
           }
         }
       }
@@ -107,7 +108,38 @@ export default function MasterSettings() {
     alert(`'${newItemName.trim()}' 항목이 추가되었습니다. 하단의 '설정 저장하기'를 눌러 저장하세요.`);
   };
 
+  const loadApril2026Policy = () => {
+    const rankNames = ['사원', '주임', '대리', '과장'];
+    const makeSalary = (bases: number[], thresholds: number[]) => Object.fromEntries(
+      rankNames.map((rank, i) => [rank, {
+        base: bases[i], threshold: thresholds[i], target: thresholds[i], type: 'new_tiered'
+      }])
+    );
+    const propertySalary = makeSalary([2300000, 2400000, 2600000, 2800000], [5100000, 5400000, 5700000, 6000000]);
+    setDraftConfig(prev => ({
+      ...prev,
+      salaryData: {
+        ...prev.salaryData,
+        '누수팀': makeSalary([2500000, 2750000, 3000000, 3250000], [5400000, 5700000, 6000000, 6500000]),
+        '재물팀': propertySalary,
+        '재물심사': propertySalary
+      },
+      incentiveRates: { '사원': 0.41, '주임': 0.42, '대리': 0.43, '과장': 0.44 },
+      bonusRate: 0.02,
+      bonusThresholds: { ...prev.bonusThresholds, '누수팀': 9500000, '재물팀': 8500000, '재물심사': 8500000, '마이브라운': 8500000 }
+    }));
+    setSaveSuccess(false);
+    alert("2026년 4월 기준을 편집 화면에 불러왔습니다. 금액과 비율을 확인한 뒤 ‘설정 저장하기’를 눌러 적용하세요.");
+  };
+
   const handleSaveAll = async () => {
+    const rates = Object.values(draftConfig.incentiveRates);
+    if (rates.some(rate => !Number.isFinite(rate) || rate < 0 || rate > 1) ||
+        !Number.isFinite(draftConfig.bonusRate) || draftConfig.bonusRate < 0 ||
+        rates.some(rate => rate + draftConfig.bonusRate > 1)) {
+      alert("인센티브 비율은 0~100%이며, 기본비율과 보너스 가산율의 합은 100% 이하여야 합니다.");
+      return;
+    }
     try {
       setIsSaving(true);
       await updateSystemConfig(draftConfig);
@@ -188,7 +220,7 @@ export default function MasterSettings() {
                 : 'bg-white/10 text-white hover:bg-white/20'
             }`}
           >
-            <span>💵</span> 직급별 기본급 & 기준액
+            <span>💵</span> 직급별 급여 & 인센티브
           </button>
           <button
             onClick={() => setActiveSubTab('incentive')}
@@ -295,10 +327,10 @@ export default function MasterSettings() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                <span>💵</span> 부서 및 직급별 기본급 / 기준액 관리
+                <span>💵</span> 부서 및 직급별 급여 / 인센티브 관리
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                부서 및 직급별 기본급과 인센티브 지급 기준액을 직접 수정할 수 있습니다.
+                기본급 + (월매출 − 인센기준) × 적용 비율로 계산합니다. 인센기준 이하의 인센티브는 0원입니다.
               </p>
             </div>
 
@@ -320,14 +352,23 @@ export default function MasterSettings() {
             </div>
           </div>
 
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-900 space-y-2">
+            <p>기본 비율은 같은 직급의 모든 부서에 공통 적용됩니다. 수정 후 하단의 ‘설정 저장하기’를 눌러주세요.</p>
+            <p>보너스 기준을 <b>초과</b>하면 인센기준 초과분 전체에 기본비율 + 가산율을 적용합니다. 보너스 기준과 가산율은 ‘인센티브 요율 &amp; 보너스’에서 수정합니다.</p>
+            <p className="text-xs">현재 이 설정은 직원 급여계산기에 적용됩니다. 관리자 정산은 별도 기준을 사용합니다.</p>
+            <button type="button" disabled={isSaving} onClick={loadApril2026Policy} className="px-3 py-2 bg-white border border-blue-200 rounded-lg font-bold text-xs disabled:opacity-50">
+              2026년 4월 기준 불러오기 (저장 전 미리보기)
+            </button>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 text-xs font-black">
                   <th className="p-3.5">직급</th>
                   <th className="p-3.5">기본급 (원)</th>
-                  <th className="p-3.5">목표 매출액 (원)</th>
-                  <th className="p-3.5">인센티브 시작 기준액 (원)</th>
+                  <th className="p-3.5">인센기준 (원)</th>
+                  <th className="p-3.5">기본 인센티브 비율 (%)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
@@ -358,20 +399,6 @@ export default function MasterSettings() {
                           <input
                             type="number"
                             step={10000}
-                            value={conf.target}
-                            onChange={e => handleSalaryChange(selectedDept, rank, 'target', Number(e.target.value))}
-                            className="w-36 p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800"
-                          />
-                          <span className="text-xs text-slate-400 font-bold">
-                            ({(conf.target / 10000).toLocaleString()}만원)
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3.5">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            step={10000}
                             value={conf.threshold}
                             onChange={e => handleSalaryChange(selectedDept, rank, 'threshold', Number(e.target.value))}
                             className="w-36 p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800"
@@ -380,6 +407,18 @@ export default function MasterSettings() {
                             ({(conf.threshold / 10000).toLocaleString()}만원)
                           </span>
                         </div>
+                      </td>
+                      <td className="p-3.5">
+                        <input
+                          aria-label={`${rank} 기본 인센티브 비율 (%)`}
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.1}
+                          value={Number(((draftConfig.incentiveRates[rank] ?? 0.41) * 100).toFixed(2))}
+                          onChange={e => handleIncentiveRateChange(rank, Number(e.target.value))}
+                          className="w-24 p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold"
+                        />
                       </td>
                     </tr>
                   );
@@ -410,15 +449,15 @@ export default function MasterSettings() {
               </h3>
               <div className="space-y-3">
                 {ranks.map(rank => {
-                  const ratePercent = Math.round((draftConfig.incentiveRates[rank] || 0.41) * 100);
+                  const ratePercent = Number(((draftConfig.incentiveRates[rank] ?? 0.41) * 100).toFixed(2));
                   return (
                     <div key={rank} className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-700">{rank} 지급율</span>
                       <div className="flex items-center gap-1.5">
                         <input
                           type="number"
-                          step={1}
-                          min={1}
+                          step={0.1}
+                          min={0}
                           max={100}
                           value={ratePercent}
                           onChange={e => handleIncentiveRateChange(rank, Number(e.target.value))}
@@ -441,7 +480,7 @@ export default function MasterSettings() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-xs font-bold text-slate-800">보너스 가산율</div>
-                    <div className="text-[11px] text-slate-500">기준 달성 시 기본 지급율에 합산 가산됨</div>
+                    <div className="text-[11px] text-slate-500">기준액 초과 시 기본비율에 가산 (%p)</div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <input
@@ -449,7 +488,7 @@ export default function MasterSettings() {
                       step={0.5}
                       min={0}
                       max={20}
-                      value={Math.round(draftConfig.bonusRate * 100)}
+                      value={Number((draftConfig.bonusRate * 100).toFixed(2))}
                       onChange={e => setDraftConfig(prev => ({ ...prev, bonusRate: Number(e.target.value) / 100 }))}
                       className="w-20 p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold text-center bg-white"
                     />
