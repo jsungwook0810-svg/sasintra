@@ -17,6 +17,9 @@ import { getKSTToday, KOR_HOLIDAYS } from '@/lib/utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, appId } from '@/lib/firebase';
 
+// Temporarily hidden for all roles; keep the screens and data for later use.
+const HIDDEN_TAB_IDS = new Set(['subViewNotices', 'subViewLeave', 'subViewCal']);
+
 export default function MainApp() {
   const { currentUser, logout } = useAuth();
   const { allUserReports, notices, allLeavesGlobal, notifications, systemConfig } = useData();
@@ -102,6 +105,8 @@ export default function MainApp() {
       { id: 'subViewNotices', label: '📢 공지사항', category: '📌 공통 업무' }
     ];
   }
+
+  tabs = tabs.filter(tab => !HIDDEN_TAB_IDS.has(tab.id));
 
   const [activeTab, setActiveTab] = useState(isMaster ? 'masterSettings' : tabs[0].id);
   const [isNavOpen, setIsNavOpen] = useState(false);
@@ -346,7 +351,7 @@ export default function MainApp() {
         </div>
       )}
 
-      {unreadNotice && (
+      {!HIDDEN_TAB_IDS.has('subViewNotices') && unreadNotice && (
         <div 
           onClick={() => setActiveTab('subViewNotices')}
           className="mb-4 p-4 rounded-xl text-sm font-bold flex items-center gap-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)] cursor-pointer bg-red-50 text-red-600 border border-red-200 animate-pulse"
